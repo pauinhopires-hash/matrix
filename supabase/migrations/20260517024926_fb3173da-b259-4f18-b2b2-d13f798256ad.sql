@@ -1,0 +1,1 @@
+ALTER TYPE public.lider_tipo ADD VALUE IF NOT EXISTS 'lider_gerencia';
