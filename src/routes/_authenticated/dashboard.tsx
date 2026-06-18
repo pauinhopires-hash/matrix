@@ -23,7 +23,7 @@ import {
   Package,
   ChefHat,
   ShieldCheck,
-  Trophy,
+  ShoppingCart,
   ChevronRight,
   AlertTriangle,
 } from "lucide-react";
@@ -195,10 +195,22 @@ function Dashboard() {
               </CardContent>
             </Card>
           </Link>
+          <Link to="/compras" className="block">
+            <Card className="transition active:scale-[0.99]">
+              <CardContent className="flex flex-col items-start gap-2 p-4">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                  <ShoppingCart className="h-4 w-4" />
+                </div>
+                <p className="text-sm font-medium">Compras</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Pedidos, fornecedores e lista
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
           {[
             { Icon: ChefHat, label: "Produção" },
             { Icon: ShieldCheck, label: "Auditoria" },
-            { Icon: Trophy, label: "Ranking" },
           ].map(({ Icon, label }) => (
             <Card key={label} className="opacity-60">
               <CardContent className="flex flex-col items-start gap-2 p-4">
