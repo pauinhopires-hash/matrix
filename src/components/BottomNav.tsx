@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Home, ListChecks, Package, User as UserIcon, Shield } from "lucide-react";
+import { Home, ListChecks, Package, User as UserIcon, Shield, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 export function BottomNav() {
@@ -10,6 +10,7 @@ export function BottomNav() {
     { to: "/dashboard", label: "Início", Icon: Home },
     { to: "/checklist/abertura", label: "Checks", Icon: ListChecks },
     { to: "/estoque", label: "Estoque", Icon: Package },
+    { to: "/compras", label: "Compras", Icon: ShoppingCart },
     ...(isStaff ? [{ to: "/admin/usuarios", label: "Equipe", Icon: Shield }] : []),
     { to: "/perfil", label: "Perfil", Icon: UserIcon },
   ] as const;
