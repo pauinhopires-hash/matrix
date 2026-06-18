@@ -19,6 +19,7 @@ import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedEstoqueRouteImport } from './routes/_authenticated/estoque'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEstoqueIndexRouteImport } from './routes/_authenticated/estoque.index'
+import { Route as AuthenticatedComprasIndexRouteImport } from './routes/_authenticated/compras.index'
 import { Route as AuthenticatedEstoqueRetiradaRouteImport } from './routes/_authenticated/estoque.retirada'
 import { Route as AuthenticatedEstoqueRequisicoesRouteImport } from './routes/_authenticated/estoque.requisicoes'
 import { Route as AuthenticatedEstoqueRelatorioRouteImport } from './routes/_authenticated/estoque.relatorio'
@@ -29,8 +30,13 @@ import { Route as AuthenticatedEstoqueImportarRouteImport } from './routes/_auth
 import { Route as AuthenticatedEstoqueEntradaRouteImport } from './routes/_authenticated/estoque.entrada'
 import { Route as AuthenticatedEstoqueContagemRouteImport } from './routes/_authenticated/estoque.contagem'
 import { Route as AuthenticatedEstoqueCategoriasRouteImport } from './routes/_authenticated/estoque.categorias'
+import { Route as AuthenticatedComprasPedidoRouteImport } from './routes/_authenticated/compras.pedido'
+import { Route as AuthenticatedComprasListaRouteImport } from './routes/_authenticated/compras.lista'
+import { Route as AuthenticatedComprasHistoricoRouteImport } from './routes/_authenticated/compras.historico'
 import { Route as AuthenticatedChecklistTipoRouteImport } from './routes/_authenticated/checklist.$tipo'
 import { Route as AuthenticatedAdminUsuariosRouteImport } from './routes/_authenticated/admin/usuarios'
+import { Route as AuthenticatedAdminRequisicoesCompraRouteImport } from './routes/_authenticated/admin/requisicoes-compra'
+import { Route as AuthenticatedAdminFornecedoresRouteImport } from './routes/_authenticated/admin/fornecedores'
 import { Route as AuthenticatedAdminChecklistsRouteImport } from './routes/_authenticated/admin/checklists'
 
 const SignupRoute = SignupRouteImport.update({
@@ -82,6 +88,12 @@ const AuthenticatedEstoqueIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedEstoqueRoute,
+  } as any)
+const AuthenticatedComprasIndexRoute =
+  AuthenticatedComprasIndexRouteImport.update({
+    id: '/compras/',
+    path: '/compras/',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedEstoqueRetiradaRoute =
   AuthenticatedEstoqueRetiradaRouteImport.update({
@@ -143,6 +155,24 @@ const AuthenticatedEstoqueCategoriasRoute =
     path: '/categorias',
     getParentRoute: () => AuthenticatedEstoqueRoute,
   } as any)
+const AuthenticatedComprasPedidoRoute =
+  AuthenticatedComprasPedidoRouteImport.update({
+    id: '/compras/pedido',
+    path: '/compras/pedido',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedComprasListaRoute =
+  AuthenticatedComprasListaRouteImport.update({
+    id: '/compras/lista',
+    path: '/compras/lista',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedComprasHistoricoRoute =
+  AuthenticatedComprasHistoricoRouteImport.update({
+    id: '/compras/historico',
+    path: '/compras/historico',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedChecklistTipoRoute =
   AuthenticatedChecklistTipoRouteImport.update({
     id: '/checklist/$tipo',
@@ -153,6 +183,18 @@ const AuthenticatedAdminUsuariosRoute =
   AuthenticatedAdminUsuariosRouteImport.update({
     id: '/admin/usuarios',
     path: '/admin/usuarios',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminRequisicoesCompraRoute =
+  AuthenticatedAdminRequisicoesCompraRouteImport.update({
+    id: '/admin/requisicoes-compra',
+    path: '/admin/requisicoes-compra',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminFornecedoresRoute =
+  AuthenticatedAdminFornecedoresRouteImport.update({
+    id: '/admin/fornecedores',
+    path: '/admin/fornecedores',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminChecklistsRoute =
@@ -172,8 +214,13 @@ export interface FileRoutesByFullPath {
   '/estoque': typeof AuthenticatedEstoqueRouteWithChildren
   '/perfil': typeof AuthenticatedPerfilRoute
   '/admin/checklists': typeof AuthenticatedAdminChecklistsRoute
+  '/admin/fornecedores': typeof AuthenticatedAdminFornecedoresRoute
+  '/admin/requisicoes-compra': typeof AuthenticatedAdminRequisicoesCompraRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/checklist/$tipo': typeof AuthenticatedChecklistTipoRoute
+  '/compras/historico': typeof AuthenticatedComprasHistoricoRoute
+  '/compras/lista': typeof AuthenticatedComprasListaRoute
+  '/compras/pedido': typeof AuthenticatedComprasPedidoRoute
   '/estoque/categorias': typeof AuthenticatedEstoqueCategoriasRoute
   '/estoque/contagem': typeof AuthenticatedEstoqueContagemRoute
   '/estoque/entrada': typeof AuthenticatedEstoqueEntradaRoute
@@ -184,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/estoque/relatorio': typeof AuthenticatedEstoqueRelatorioRoute
   '/estoque/requisicoes': typeof AuthenticatedEstoqueRequisicoesRoute
   '/estoque/retirada': typeof AuthenticatedEstoqueRetiradaRoute
+  '/compras/': typeof AuthenticatedComprasIndexRoute
   '/estoque/': typeof AuthenticatedEstoqueIndexRoute
 }
 export interface FileRoutesByTo {
@@ -195,8 +243,13 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/admin/checklists': typeof AuthenticatedAdminChecklistsRoute
+  '/admin/fornecedores': typeof AuthenticatedAdminFornecedoresRoute
+  '/admin/requisicoes-compra': typeof AuthenticatedAdminRequisicoesCompraRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/checklist/$tipo': typeof AuthenticatedChecklistTipoRoute
+  '/compras/historico': typeof AuthenticatedComprasHistoricoRoute
+  '/compras/lista': typeof AuthenticatedComprasListaRoute
+  '/compras/pedido': typeof AuthenticatedComprasPedidoRoute
   '/estoque/categorias': typeof AuthenticatedEstoqueCategoriasRoute
   '/estoque/contagem': typeof AuthenticatedEstoqueContagemRoute
   '/estoque/entrada': typeof AuthenticatedEstoqueEntradaRoute
@@ -207,6 +260,7 @@ export interface FileRoutesByTo {
   '/estoque/relatorio': typeof AuthenticatedEstoqueRelatorioRoute
   '/estoque/requisicoes': typeof AuthenticatedEstoqueRequisicoesRoute
   '/estoque/retirada': typeof AuthenticatedEstoqueRetiradaRoute
+  '/compras': typeof AuthenticatedComprasIndexRoute
   '/estoque': typeof AuthenticatedEstoqueIndexRoute
 }
 export interface FileRoutesById {
@@ -221,8 +275,13 @@ export interface FileRoutesById {
   '/_authenticated/estoque': typeof AuthenticatedEstoqueRouteWithChildren
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/admin/checklists': typeof AuthenticatedAdminChecklistsRoute
+  '/_authenticated/admin/fornecedores': typeof AuthenticatedAdminFornecedoresRoute
+  '/_authenticated/admin/requisicoes-compra': typeof AuthenticatedAdminRequisicoesCompraRoute
   '/_authenticated/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/_authenticated/checklist/$tipo': typeof AuthenticatedChecklistTipoRoute
+  '/_authenticated/compras/historico': typeof AuthenticatedComprasHistoricoRoute
+  '/_authenticated/compras/lista': typeof AuthenticatedComprasListaRoute
+  '/_authenticated/compras/pedido': typeof AuthenticatedComprasPedidoRoute
   '/_authenticated/estoque/categorias': typeof AuthenticatedEstoqueCategoriasRoute
   '/_authenticated/estoque/contagem': typeof AuthenticatedEstoqueContagemRoute
   '/_authenticated/estoque/entrada': typeof AuthenticatedEstoqueEntradaRoute
@@ -233,6 +292,7 @@ export interface FileRoutesById {
   '/_authenticated/estoque/relatorio': typeof AuthenticatedEstoqueRelatorioRoute
   '/_authenticated/estoque/requisicoes': typeof AuthenticatedEstoqueRequisicoesRoute
   '/_authenticated/estoque/retirada': typeof AuthenticatedEstoqueRetiradaRoute
+  '/_authenticated/compras/': typeof AuthenticatedComprasIndexRoute
   '/_authenticated/estoque/': typeof AuthenticatedEstoqueIndexRoute
 }
 export interface FileRouteTypes {
@@ -247,8 +307,13 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/perfil'
     | '/admin/checklists'
+    | '/admin/fornecedores'
+    | '/admin/requisicoes-compra'
     | '/admin/usuarios'
     | '/checklist/$tipo'
+    | '/compras/historico'
+    | '/compras/lista'
+    | '/compras/pedido'
     | '/estoque/categorias'
     | '/estoque/contagem'
     | '/estoque/entrada'
@@ -259,6 +324,7 @@ export interface FileRouteTypes {
     | '/estoque/relatorio'
     | '/estoque/requisicoes'
     | '/estoque/retirada'
+    | '/compras/'
     | '/estoque/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -270,8 +336,13 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/perfil'
     | '/admin/checklists'
+    | '/admin/fornecedores'
+    | '/admin/requisicoes-compra'
     | '/admin/usuarios'
     | '/checklist/$tipo'
+    | '/compras/historico'
+    | '/compras/lista'
+    | '/compras/pedido'
     | '/estoque/categorias'
     | '/estoque/contagem'
     | '/estoque/entrada'
@@ -282,6 +353,7 @@ export interface FileRouteTypes {
     | '/estoque/relatorio'
     | '/estoque/requisicoes'
     | '/estoque/retirada'
+    | '/compras'
     | '/estoque'
   id:
     | '__root__'
@@ -295,8 +367,13 @@ export interface FileRouteTypes {
     | '/_authenticated/estoque'
     | '/_authenticated/perfil'
     | '/_authenticated/admin/checklists'
+    | '/_authenticated/admin/fornecedores'
+    | '/_authenticated/admin/requisicoes-compra'
     | '/_authenticated/admin/usuarios'
     | '/_authenticated/checklist/$tipo'
+    | '/_authenticated/compras/historico'
+    | '/_authenticated/compras/lista'
+    | '/_authenticated/compras/pedido'
     | '/_authenticated/estoque/categorias'
     | '/_authenticated/estoque/contagem'
     | '/_authenticated/estoque/entrada'
@@ -307,6 +384,7 @@ export interface FileRouteTypes {
     | '/_authenticated/estoque/relatorio'
     | '/_authenticated/estoque/requisicoes'
     | '/_authenticated/estoque/retirada'
+    | '/_authenticated/compras/'
     | '/_authenticated/estoque/'
   fileRoutesById: FileRoutesById
 }
@@ -391,6 +469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEstoqueIndexRouteImport
       parentRoute: typeof AuthenticatedEstoqueRoute
     }
+    '/_authenticated/compras/': {
+      id: '/_authenticated/compras/'
+      path: '/compras'
+      fullPath: '/compras/'
+      preLoaderRoute: typeof AuthenticatedComprasIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/estoque/retirada': {
       id: '/_authenticated/estoque/retirada'
       path: '/retirada'
@@ -461,6 +546,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEstoqueCategoriasRouteImport
       parentRoute: typeof AuthenticatedEstoqueRoute
     }
+    '/_authenticated/compras/pedido': {
+      id: '/_authenticated/compras/pedido'
+      path: '/compras/pedido'
+      fullPath: '/compras/pedido'
+      preLoaderRoute: typeof AuthenticatedComprasPedidoRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/compras/lista': {
+      id: '/_authenticated/compras/lista'
+      path: '/compras/lista'
+      fullPath: '/compras/lista'
+      preLoaderRoute: typeof AuthenticatedComprasListaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/compras/historico': {
+      id: '/_authenticated/compras/historico'
+      path: '/compras/historico'
+      fullPath: '/compras/historico'
+      preLoaderRoute: typeof AuthenticatedComprasHistoricoRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/checklist/$tipo': {
       id: '/_authenticated/checklist/$tipo'
       path: '/checklist/$tipo'
@@ -473,6 +579,20 @@ declare module '@tanstack/react-router' {
       path: '/admin/usuarios'
       fullPath: '/admin/usuarios'
       preLoaderRoute: typeof AuthenticatedAdminUsuariosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/requisicoes-compra': {
+      id: '/_authenticated/admin/requisicoes-compra'
+      path: '/admin/requisicoes-compra'
+      fullPath: '/admin/requisicoes-compra'
+      preLoaderRoute: typeof AuthenticatedAdminRequisicoesCompraRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/fornecedores': {
+      id: '/_authenticated/admin/fornecedores'
+      path: '/admin/fornecedores'
+      fullPath: '/admin/fornecedores'
+      preLoaderRoute: typeof AuthenticatedAdminFornecedoresRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/checklists': {
@@ -521,8 +641,14 @@ interface AuthenticatedRouteChildren {
   AuthenticatedEstoqueRoute: typeof AuthenticatedEstoqueRouteWithChildren
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedAdminChecklistsRoute: typeof AuthenticatedAdminChecklistsRoute
+  AuthenticatedAdminFornecedoresRoute: typeof AuthenticatedAdminFornecedoresRoute
+  AuthenticatedAdminRequisicoesCompraRoute: typeof AuthenticatedAdminRequisicoesCompraRoute
   AuthenticatedAdminUsuariosRoute: typeof AuthenticatedAdminUsuariosRoute
   AuthenticatedChecklistTipoRoute: typeof AuthenticatedChecklistTipoRoute
+  AuthenticatedComprasHistoricoRoute: typeof AuthenticatedComprasHistoricoRoute
+  AuthenticatedComprasListaRoute: typeof AuthenticatedComprasListaRoute
+  AuthenticatedComprasPedidoRoute: typeof AuthenticatedComprasPedidoRoute
+  AuthenticatedComprasIndexRoute: typeof AuthenticatedComprasIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -530,8 +656,15 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedEstoqueRoute: AuthenticatedEstoqueRouteWithChildren,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedAdminChecklistsRoute: AuthenticatedAdminChecklistsRoute,
+  AuthenticatedAdminFornecedoresRoute: AuthenticatedAdminFornecedoresRoute,
+  AuthenticatedAdminRequisicoesCompraRoute:
+    AuthenticatedAdminRequisicoesCompraRoute,
   AuthenticatedAdminUsuariosRoute: AuthenticatedAdminUsuariosRoute,
   AuthenticatedChecklistTipoRoute: AuthenticatedChecklistTipoRoute,
+  AuthenticatedComprasHistoricoRoute: AuthenticatedComprasHistoricoRoute,
+  AuthenticatedComprasListaRoute: AuthenticatedComprasListaRoute,
+  AuthenticatedComprasPedidoRoute: AuthenticatedComprasPedidoRoute,
+  AuthenticatedComprasIndexRoute: AuthenticatedComprasIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -549,13 +682,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
