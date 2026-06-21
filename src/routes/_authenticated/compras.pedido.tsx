@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
+// Cliente sem tipo estrito p/ tabelas/colunas ainda não refletidas no types.ts gerado
+const sb = supabase as unknown as { from: (t: string) => any };
+
 export const Route = createFileRoute("/_authenticated/compras/pedido")({
   component: PedidoPage,
 });
