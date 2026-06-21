@@ -43,7 +43,30 @@ function RetiradaPage() {
     saldos.find((s) => s.produto_id === produtoId && s.sublocal_id === subLocalId)?.quantidade ?? 0,
   );
 
-  function handleProdutoChange(id: string) {
+  const agrupados = useMemo(() => {
+    const arr = [...produtos].sort((a, b) => {
+      const ga = (a.grupo ?? "Outros").localeCompare(b.grupo ?? "Outros");
+      if (ga !== 0) return ga;
+      const sa = (a.subgrupo ?? "—").localeCompare(b.subgrupo ?? "—");
+      if (sa !== 0) return sa;
+      return a.nome.localeCompare(b.nome);
+    });
+    const map = new Map<string, Map<string, typeof arr>>();
+    for (const p of arr) {
+      const g = p.grupo ?? "Outros";
+      const sg = p.subgrupo ?? "—";
+      if (!map.has(g)) map.set(g, new Map());
+      const sub = map.get(g)!;
+      if (!sub.has(sg)) sub.set(sg, []);
+      sub.get(sg)!.push(p);
+    }
+    return Array.from(map.entries()).map(([grupo, subs]) => ({
+      grupo,
+      subgrupos: Array.from(subs.entries()).map(([subgrupo, itens]) => ({ subgrupo, itens })),
+    }));
+  }, [produtos]);
+
+  function escolherProduto(id: string) {
     setProdutoId(id);
     const p = produtos.find((x) => x.id === id);
     if (p?.default_sublocal_id) setSubLocalId(p.default_sublocal_id);
@@ -78,7 +101,7 @@ function RetiradaPage() {
   });
 
   function salvar() {
-    if (!produtoId) return toast.error("Selecione um produto");
+    if (!produtoId) return toast.error("Escolha um produto");
     if (!subLocalId) return toast.error("Selecione o sub-local de origem");
     const q = Number(quantidade);
     if (!q || q <= 0) return toast.error("Quantidade inválida");
@@ -89,7 +112,7 @@ function RetiradaPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-6">
       <Link to="/estoque" className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <ArrowLeft className="h-3 w-3" /> Estoque
       </Link>
@@ -97,78 +120,143 @@ function RetiradaPage() {
         <ArrowUpFromLine className="h-5 w-5 text-warning" /> Registrar retirada
       </h1>
 
-      <Card><CardContent className="space-y-3 p-4">
-        <div>
-          <label className="text-xs text-muted-foreground">Produto</label>
-          <Select value={produtoId} onValueChange={handleProdutoChange}>
-            <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-            <SelectContent>
-              {produtos.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {!produtoId && (
+        <div className="space-y-5">
+          <p className="text-xs text-muted-foreground">Escolha o produto na lista abaixo.</p>
+          {agrupados.map(({ grupo, subgrupos }) => (
+            <section key={grupo}>
+              <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">{grupo}</h2>
+              <div className="space-y-3">
+                {subgrupos.map(({ subgrupo, itens }) => (
+                  <div key={subgrupo}>
+                    {subgrupos.length > 1 || subgrupo !== "—" ? (
+                      <p className="mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">{subgrupo}</p>
+                    ) : null}
+                    <div className="space-y-1.5">
+                      {itens.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => escolherProduto(p.id)}
+                          className="flex w-full items-center justify-between rounded-md border bg-card px-3 py-2.5 text-left text-sm hover:border-primary"
+                        >
+                          <span className="truncate font-medium">{p.nome}</span>
+                          <span className="text-[10px] text-muted-foreground">{p.unidade}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
+      )}
 
-        <div>
-          <label className="text-xs text-muted-foreground">Sub-local de origem</label>
-          <Select value={subLocalId} onValueChange={setSubLocalId}>
-            <SelectTrigger><SelectValue placeholder="Selecionar sub-local" /></SelectTrigger>
-            <SelectContent>
-              {sublocais.map((s) => {
-                const l = locais.find((x) => x.id === s.local_id);
-                return (
-                  <SelectItem key={s.id} value={s.id}>
-                    {l?.nome ? `${l.nome} · ` : ""}{s.nome}
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-          {produto && subLocalId && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Saldo neste sub-local: {fmtQty(saldoSublocal, produto.unidade)}
-            </p>
-          )}
-        </div>
+      {produtoId && (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Produto</p>
+                <p className="text-sm font-semibold truncate">{produto?.nome}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setProdutoId("")}>
+                Trocar
+              </Button>
+            </div>
 
-        <div>
-          <label className="text-xs text-muted-foreground">Quantidade {produto && `(${produto.unidade})`}</label>
-          <Input type="number" inputMode="decimal" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
-          {produto && Number(quantidade) > saldoSublocal && (
-            <p className="mt-1 flex items-center gap-1 text-[11px] text-warning">
-              <AlertTriangle className="h-3 w-3" /> Maior que saldo atual.
-            </p>
-          )}
-        </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Sub-local de origem</label>
+              <Select value={subLocalId} onValueChange={setSubLocalId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar sub-local" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sublocais.map((s) => {
+                    const l = locais.find((x) => x.id === s.local_id);
+                    return (
+                      <SelectItem key={s.id} value={s.id}>
+                        {l?.nome ? `${l.nome} · ` : ""}
+                        {s.nome}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              {produto && subLocalId && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Saldo neste sub-local: {fmtQty(saldoSublocal, produto.unidade)}
+                </p>
+              )}
+            </div>
 
-        <div>
-          <label className="text-xs text-muted-foreground">Motivo / observação</label>
-          <Textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ex.: usado para evento X" />
-        </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Quantidade {produto && `(${produto.unidade})`}</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={quantidade}
+                onChange={(e) => setQuantidade(e.target.value)}
+              />
+              {produto && Number(quantidade) > saldoSublocal && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-warning">
+                  <AlertTriangle className="h-3 w-3" /> Maior que saldo atual.
+                </p>
+              )}
+            </div>
 
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">Foto obrigatória *</p>
-          <div className="flex items-start gap-2">
-            <label htmlFor="foto-ret" className={`flex h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed text-sm ${foto ? "border-success/50 text-success" : "border-destructive/40 text-destructive"}`}>
-              <Camera className="h-4 w-4" /> {foto ? "Trocar foto" : "Adicionar foto"}
-            </label>
-            <input id="foto-ret" type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
-          </div>
-        </div>
-        {fotoPreview && (
-          <div className="relative">
-            <img src={fotoPreview} alt="" className="max-h-40 w-full rounded-md object-cover" />
-            <Button size="icon" variant="secondary" onClick={() => { setFoto(null); setFotoPreview(undefined); }} className="absolute right-2 top-2 h-7 w-7">
-              <X className="h-3 w-3" />
+            <div>
+              <label className="text-xs text-muted-foreground">Motivo / observação</label>
+              <Textarea
+                rows={2}
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                placeholder="Ex.: usado para evento X"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Foto obrigatória *</p>
+              <div className="flex items-start gap-2">
+                <label
+                  htmlFor="foto-ret"
+                  className={`flex h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed text-sm ${foto ? "border-success/50 text-success" : "border-destructive/40 text-destructive"}`}
+                >
+                  <Camera className="h-4 w-4" /> {foto ? "Trocar foto" : "Adicionar foto"}
+                </label>
+                <input
+                  id="foto-ret"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={onFile}
+                  className="hidden"
+                />
+              </div>
+            </div>
+            {fotoPreview && (
+              <div className="relative">
+                <img src={fotoPreview} alt="" className="max-h-40 w-full rounded-md object-cover" />
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  onClick={() => {
+                    setFoto(null);
+                    setFotoPreview(undefined);
+                  }}
+                  className="absolute right-2 top-2 h-7 w-7"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+
+            <Button className="w-full" onClick={salvar} disabled={mut.isPending || !foto || !quantidade}>
+              {mut.isPending ? "Salvando..." : "Salvar retirada"}
             </Button>
-          </div>
-        )}
-
-        <Button className="w-full" onClick={salvar} disabled={mut.isPending || !foto || !produtoId || !quantidade}>
-          {mut.isPending ? "Salvando..." : "Salvar retirada"}
-        </Button>
-      </CardContent></Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
