@@ -69,6 +69,7 @@ export type Database = {
           id: string
           label: string
           ordem: number
+          role_id: string | null
           setor: string
           tipo: Database["public"]["Enums"]["checklist_tipo"]
           updated_at: string
@@ -79,6 +80,7 @@ export type Database = {
           id: string
           label: string
           ordem?: number
+          role_id?: string | null
           setor: string
           tipo: Database["public"]["Enums"]["checklist_tipo"]
           updated_at?: string
@@ -89,11 +91,20 @@ export type Database = {
           id?: string
           label?: string
           ordem?: number
+          role_id?: string | null
           setor?: string
           tipo?: Database["public"]["Enums"]["checklist_tipo"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "checklist_itens_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       checklist_registros: {
         Row: {
@@ -138,6 +149,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      checklist_role_users: {
+        Row: {
+          created_at: string
+          id: string
+          role_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_role_users_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_roles: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       locais: {
         Row: {
