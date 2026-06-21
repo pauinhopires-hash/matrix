@@ -1,285 +1,367 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth";
-import { fetchProdutos, qk as estoqueQk, UNIDADES } from "@/lib/estoque-db";
-import {
-  fetchFornecedores,
-  criarRequisicaoCompra,
-  qk as comprasQk,
-  type NovoItemCompra,
-} from "@/lib/compras-db";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Minus, Plus, Check, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/compras/pedido")({
-  head: () => ({ meta: [{ title: "Novo pedido — Compras" }] }),
-  component: NovoPedidoPage,
+  component: PedidoPage,
 });
 
-interface LinhaItem {
-  key: string;
-  modo: "produto" | "custom";
-  produto_id: string;
-  nome_custom: string;
-  quantidade: string;
+type Produto = {
+  id: string;
+  nome: string;
   unidade: string;
-  valor_unit: string;
-}
+  grupo: string | null;
+  subgrupo: string | null;
+};
 
-function novaLinha(): LinhaItem {
-  return {
-    key: Math.random().toString(36).slice(2),
-    modo: "produto",
-    produto_id: "",
-    nome_custom: "",
-    quantidade: "",
-    unidade: "",
-    valor_unit: "",
-  };
-}
-
-function NovoPedidoPage() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
+function PedidoPage() {
   const navigate = useNavigate();
-  const [fornecedorId, setFornecedorId] = useState<string>("");
+  const { user, loading } = useAuth();
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [estoque, setEstoque] = useState<Record<string, number>>({});
+  const [carregando, setCarregando] = useState(true);
+  const [quantidades, setQuantidades] = useState<Record<string, number>>({});
+  const [unidadesOverride, setUnidadesOverride] = useState<Record<string, string>>({});
   const [observacao, setObservacao] = useState("");
-  const [linhas, setLinhas] = useState<LinhaItem[]>([novaLinha()]);
+  const [salvando, setSalvando] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [grupoFiltro, setGrupoFiltro] = useState<string>("");
 
-  const { data: produtos = [] } = useQuery({
-    queryKey: estoqueQk.produtos,
-    queryFn: fetchProdutos,
-  });
-  const { data: fornecedores = [] } = useQuery({
-    queryKey: comprasQk.fornecedores,
-    queryFn: fetchFornecedores,
-  });
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/login" });
+  }, [loading, user, navigate]);
 
-  const comprveis = (produtos as Array<{ id: string; nome: string; unidade: string; ativo: boolean; compravel?: boolean }>)
-    .filter((p) => p.ativo && (p.compravel ?? true));
-  const fornecedoresAtivos = fornecedores.filter((f) => f.ativo);
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      setCarregando(true);
+      const [{ data: prods, error: e1 }, { data: sal }] = await Promise.all([
+        supabase.from("produtos").select("id, nome, unidade, grupo, subgrupo").eq("ativo", true).order("nome"),
+        supabase.from("saldos").select("produto_id, quantidade"),
+      ]);
+      if (e1) toast.error("Erro ao carregar produtos", { description: e1.message });
+      setProdutos((prods ?? []) as Produto[]);
+      const map: Record<string, number> = {};
+      (sal ?? []).forEach((r: { produto_id: string; quantidade: number }) => {
+        map[r.produto_id] = (map[r.produto_id] ?? 0) + Number(r.quantidade);
+      });
+      setEstoque(map);
+      setCarregando(false);
+    })();
+  }, [user]);
 
-  const criar = useMutation({
-    mutationFn: criarRequisicaoCompra,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: comprasQk.requisicoesCompra });
-      qc.invalidateQueries({ queryKey: comprasQk.itensCompra });
-      toast.success("Pedido criado");
-      navigate({ to: "/compras/historico" });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  if (!user) return null;
-
-  function updateLinha(key: string, patch: Partial<LinhaItem>) {
-    setLinhas((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
-  }
-
-  function removerLinha(key: string) {
-    setLinhas((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.key !== key)));
-  }
-
-  function onProdutoChange(key: string, produtoId: string) {
-    const p = comprveis.find((x) => x.id === produtoId);
-    updateLinha(key, {
-      produto_id: produtoId,
-      unidade: p?.unidade ?? "",
+  const setQtd = (id: string, valor: number) => {
+    setQuantidades((q) => {
+      const novo = { ...q };
+      if (valor <= 0) delete novo[id];
+      else novo[id] = valor;
+      return novo;
     });
-  }
+  };
 
-  function salvar() {
-    const itens: NovoItemCompra[] = [];
-    for (const l of linhas) {
-      const q = Number(l.quantidade);
-      if (!q || q <= 0) return toast.error("Quantidade inválida em um dos itens");
-      if (l.modo === "produto") {
-        if (!l.produto_id) return toast.error("Selecione o produto");
-        itens.push({
-          produto_id: l.produto_id,
-          quantidade: q,
-          unidade: l.unidade || null,
-          valor_unit: l.valor_unit ? Number(l.valor_unit) : null,
-        });
-      } else {
-        if (!l.nome_custom.trim()) return toast.error("Informe o nome do item");
-        itens.push({
-          nome_custom: l.nome_custom.trim(),
-          quantidade: q,
-          unidade: l.unidade || null,
-          valor_unit: l.valor_unit ? Number(l.valor_unit) : null,
-        });
-      }
+  const repetirUltimo = async () => {
+    if (!user) return;
+    const { data: req } = await supabase
+      .from("requisicoes_compra")
+      .select("id")
+      .eq("usuario_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!req) {
+      toast.info("Nenhum pedido anterior encontrado");
+      return;
     }
-    if (itens.length === 0) return toast.error("Adicione ao menos 1 item");
-    criar.mutate({
-      usuario_id: user!.id,
-      fornecedor_id: fornecedorId || null,
-      observacao: observacao || null,
-      itens,
+    const { data: itens } = await supabase
+      .from("requisicao_compra_itens")
+      .select("produto_id, quantidade")
+      .eq("requisicao_id", req.id);
+    if (!itens || itens.length === 0) {
+      toast.info("Pedido anterior estava vazio");
+      return;
+    }
+    const map: Record<string, number> = {};
+    itens.forEach((i) => {
+      if (i.produto_id) map[i.produto_id] = Number(i.quantidade);
     });
+    setQuantidades(map);
+    toast.success(`${itens.length} itens carregados do último pedido`);
+  };
+
+  const itensSelecionados = useMemo(() => Object.entries(quantidades).filter(([, v]) => v > 0), [quantidades]);
+
+  const produtosFiltrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return produtos.filter((p) => {
+      if (grupoFiltro && (p.grupo ?? "Outros") !== grupoFiltro) return false;
+      if (q && !p.nome.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [produtos, busca, grupoFiltro]);
+
+  const gruposDisponiveis = useMemo(() => {
+    const set = new Set<string>();
+    produtos.forEach((p) => set.add(p.grupo ?? "Outros"));
+    return Array.from(set).sort();
+  }, [produtos]);
+
+  const produtosAgrupados = useMemo(() => {
+    const map = new Map<string, Map<string, Produto[]>>();
+    produtosFiltrados.forEach((p) => {
+      const g = p.grupo ?? "Outros";
+      const sg = p.subgrupo ?? "—";
+      if (!map.has(g)) map.set(g, new Map());
+      const sub = map.get(g)!;
+      if (!sub.has(sg)) sub.set(sg, []);
+      sub.get(sg)!.push(p);
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([grupo, subs]) => ({
+        grupo,
+        subgrupos: Array.from(subs.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([subgrupo, itens]) => ({ subgrupo, itens })),
+      }));
+  }, [produtosFiltrados]);
+
+  const handleSalvar = async () => {
+    if (!user || itensSelecionados.length === 0) return;
+    setSalvando(true);
+
+    const { data: req, error: e1 } = await supabase
+      .from("requisicoes_compra")
+      .insert({
+        usuario_id: user.id,
+        observacao: observacao.trim() || null,
+        status: "pendente",
+      })
+      .select("id")
+      .single();
+
+    if (e1 || !req) {
+      toast.error("Erro ao criar pedido", { description: e1?.message });
+      setSalvando(false);
+      return;
+    }
+
+    const itens = itensSelecionados.map(([produto_id, quantidade]) => ({
+      requisicao_id: req.id,
+      produto_id,
+      quantidade,
+      unidade: unidadesOverride[produto_id] || null,
+    }));
+
+    const { error: e2 } = await supabase.from("requisicao_compra_itens").insert(itens);
+    setSalvando(false);
+    if (e2) {
+      toast.error("Erro ao salvar itens", { description: e2.message });
+      return;
+    }
+    toast.success("Pedido enviado", { description: `${itens.length} itens registrados.` });
+    navigate({ to: "/compras" });
+  };
+
+  if (loading || !user) {
+    return <p className="py-12 text-center text-sm text-muted-foreground">Carregando...</p>;
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Link to="/compras" className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <ArrowLeft className="h-3 w-3" /> Compras
-        </Link>
-        <h1 className="mt-2 font-display text-xl font-bold">Novo pedido</h1>
-      </div>
-
-      <Card>
-        <CardContent className="space-y-3 p-4">
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Fornecedor (opcional)</label>
-            <Select value={fornecedorId} onValueChange={setFornecedorId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sem fornecedor" />
-              </SelectTrigger>
-              <SelectContent>
-                {fornecedoresAtivos.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Observação</label>
-            <Textarea
-              rows={2}
-              value={observacao}
-              onChange={(e) => setObservacao(e.target.value)}
-              placeholder="Ex.: urgente para o jantar de sábado"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Itens
-          </h2>
-          <Button size="sm" variant="outline" onClick={() => setLinhas((p) => [...p, novaLinha()])}>
-            <Plus className="mr-1 h-3 w-3" /> Item
-          </Button>
+    <div className="pb-28">
+      <div className="mb-4 flex items-center gap-3">
+        <button
+          onClick={() => navigate({ to: "/compras" })}
+          className="rounded-md p-2 text-muted-foreground transition hover:bg-card hover:text-foreground"
+          aria-label="Voltar"
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <div className="flex-1">
+          <p className="text-xs uppercase tracking-widest text-primary">Nova requisição</p>
+          <h1 className="text-lg font-bold text-foreground">Fazer pedido</h1>
         </div>
-
-        {linhas.map((l, idx) => (
-          <Card key={l.key}>
-            <CardContent className="space-y-2 p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Item {idx + 1}
-                </p>
-                {linhas.length > 1 && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-destructive"
-                    onClick={() => removerLinha(l.key)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant={l.modo === "produto" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => updateLinha(l.key, { modo: "produto" })}
-                >
-                  Produto
-                </Button>
-                <Button
-                  size="sm"
-                  variant={l.modo === "custom" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => updateLinha(l.key, { modo: "custom" })}
-                >
-                  Item avulso
-                </Button>
-              </div>
-
-              {l.modo === "produto" ? (
-                <Select value={l.produto_id} onValueChange={(v) => onProdutoChange(l.key, v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o produto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {comprveis.length === 0 && (
-                      <div className="px-2 py-1 text-xs text-muted-foreground">
-                        Nenhum produto marcado como comprável
-                      </div>
-                    )}
-                    {comprveis.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  placeholder="Nome do item"
-                  value={l.nome_custom}
-                  onChange={(e) => updateLinha(l.key, { nome_custom: e.target.value })}
-                />
-              )}
-
-              <div className="grid grid-cols-3 gap-2">
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="Qtd"
-                  value={l.quantidade}
-                  onChange={(e) => updateLinha(l.key, { quantidade: e.target.value })}
-                />
-                <Select value={l.unidade} onValueChange={(v) => updateLinha(l.key, { unidade: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Un" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNIDADES.map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="R$/un"
-                  value={l.valor_unit}
-                  onChange={(e) => updateLinha(l.key, { valor_unit: e.target.value })}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <button
+          onClick={repetirUltimo}
+          className="flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:border-primary"
+        >
+          <RotateCcw size={14} />
+          Repetir
+        </button>
       </div>
 
-      <Button className="w-full" onClick={salvar} disabled={criar.isPending}>
-        {criar.isPending ? "Salvando..." : "Enviar pedido"}
-      </Button>
+      {gruposDisponiveis.length > 1 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => setGrupoFiltro("")}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+              grupoFiltro === ""
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground hover:border-primary"
+            }`}
+          >
+            Todos
+          </button>
+          {gruposDisponiveis.map((g) => (
+            <button
+              key={g}
+              onClick={() => setGrupoFiltro(g)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                grupoFiltro === g
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:border-primary"
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {carregando ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">Carregando produtos...</p>
+      ) : produtosFiltrados.length === 0 ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">Nada encontrado.</p>
+      ) : (
+        <div className="space-y-6">
+          {produtosAgrupados.map(({ grupo, subgrupos }) => (
+            <section key={grupo}>
+              <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">{grupo}</h2>
+              <div className="space-y-4">
+                {subgrupos.map(({ subgrupo, itens }) => (
+                  <div key={subgrupo}>
+                    {subgrupos.length > 1 || subgrupo !== "—" ? (
+                      <p className="mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">{subgrupo}</p>
+                    ) : null}
+                    <ul className="space-y-2">
+                      {itens.map((p) => {
+                        const qtd = quantidades[p.id] ?? 0;
+                        const ativo = qtd > 0;
+                        const est = estoque[p.id];
+                        const unidadeAtual = (unidadesOverride[p.id] || p.unidade).toUpperCase();
+                        const unidadeOriginal = p.unidade.toUpperCase();
+                        const alterada = unidadeAtual !== unidadeOriginal;
+                        const fracionavel = ["KG", "LT"].includes(unidadeAtual);
+                        const step = fracionavel ? 0.1 : 1;
+                        const arred = (v: number) => (fracionavel ? Math.round(v * 1000) / 1000 : Math.round(v));
+                        return (
+                          <li
+                            key={p.id}
+                            className={`flex items-center justify-between rounded-xl border bg-card px-4 py-3 transition ${
+                              ativo ? "border-primary/60" : "border-border"
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1 pr-3">
+                              <p className="truncate text-sm font-semibold text-foreground">{p.nome}</p>
+                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                <span>Unid.:</span>
+                                <select
+                                  value={unidadeAtual}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setUnidadesOverride((u) => {
+                                      const novo = { ...u };
+                                      if (v.toUpperCase() === unidadeOriginal) delete novo[p.id];
+                                      else novo[p.id] = v;
+                                      return novo;
+                                    });
+                                  }}
+                                  className={`rounded border bg-background px-1.5 py-0.5 text-[11px] font-semibold uppercase outline-none focus:border-primary ${
+                                    alterada ? "border-primary text-primary" : "border-border text-foreground"
+                                  }`}
+                                >
+                                  {["UND", "KG", "CX", "PC", "PCT", "LT"].map((u) => (
+                                    <option key={u} value={u}>
+                                      {u}
+                                      {u === unidadeOriginal ? " (padrão)" : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                                {fracionavel && <span>(aceita decimal)</span>}
+                                {est !== undefined && (
+                                  <span className={est <= 0 ? "text-destructive" : "text-foreground/70"}>
+                                    · Estoque: {est}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setQtd(p.id, Math.max(0, arred(qtd - step)))}
+                                disabled={qtd === 0}
+                                className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-foreground transition hover:border-primary disabled:opacity-40"
+                                aria-label="Diminuir"
+                              >
+                                <Minus size={14} />
+                              </button>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min={0}
+                                step={step}
+                                value={qtd === 0 ? "" : qtd}
+                                onChange={(e) => {
+                                  const v = Number(e.target.value.replace(",", "."));
+                                  setQtd(p.id, Number.isFinite(v) && v > 0 ? arred(v) : 0);
+                                }}
+                                placeholder="0"
+                                className="h-9 w-16 rounded-md border border-border bg-background text-center text-sm font-semibold tabular-nums text-foreground outline-none focus:border-primary"
+                              />
+                              <button
+                                onClick={() => setQtd(p.id, arred(qtd + step))}
+                                className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:opacity-90"
+                                aria-label="Aumentar"
+                              >
+                                <Plus size={14} />
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {itensSelecionados.length > 0 && (
+        <div className="mt-6">
+          <label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
+            Observação (opcional)
+          </label>
+          <textarea
+            value={observacao}
+            onChange={(e) => setObservacao(e.target.value)}
+            rows={3}
+            className="w-full resize-none rounded-md border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
+            placeholder="Marca preferida, urgência, etc."
+          />
+        </div>
+      )}
+
+      {itensSelecionados.length > 0 && (
+        <div className="fixed inset-x-0 bottom-20 z-20 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
+          <div className="mx-auto flex max-w-md items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Itens selecionados</p>
+              <p className="text-lg font-bold text-foreground">{itensSelecionados.length}</p>
+            </div>
+            <button
+              onClick={handleSalvar}
+              disabled={salvando}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-4 text-sm font-bold uppercase tracking-widest text-primary-foreground transition hover:opacity-95 disabled:opacity-60"
+            >
+              <Check size={18} />
+              {salvando ? "Enviando..." : "Enviar pedido"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
