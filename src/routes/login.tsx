@@ -8,7 +8,7 @@ import { Flame } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Entrar — Misturaria Control" }] }),
+  head: () => ({ meta: [{ title: "Entrar — Misturaria Control - MATRIX" }] }),
   component: LoginPage,
 });
 
@@ -40,9 +40,7 @@ function LoginPage() {
             <Flame className="h-7 w-7" />
           </div>
           <h1 className="font-display text-2xl font-bold">Misturaria Control</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Operação, checklist e auditoria.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Operação, checklist e auditoria.</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
