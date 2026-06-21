@@ -3,9 +3,15 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import {
-  fetchProdutos, upsertProduto, deleteProduto,
-  fetchCategorias, fetchSubcategorias, fetchSublocais,
-  UNIDADES, qk, type Produto,
+  fetchProdutos,
+  upsertProduto,
+  deleteProduto,
+  fetchCategorias,
+  fetchSubcategorias,
+  fetchSublocais,
+  UNIDADES,
+  qk,
+  type Produto,
 } from "@/lib/estoque-db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,8 +42,6 @@ const NONE = "__none__";
 function ProdutosPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [busca, setBusca] = useState("");
-  const [filtroCat, setFiltroCat] = useState<string>("todos");
   const [editing, setEditing] = useState<Draft | null>(null);
 
   const { data: produtos = [] } = useQuery({ queryKey: qk.produtos, queryFn: fetchProdutos });
@@ -45,37 +49,62 @@ function ProdutosPage() {
   const { data: subs = [] } = useQuery({ queryKey: qk.subcategorias, queryFn: fetchSubcategorias });
   const { data: sublocais = [] } = useQuery({ queryKey: qk.sublocais, queryFn: fetchSublocais });
 
-  const subById = useMemo(() => new Map(subs.map((s) => [s.id, s])), [subs]);
   const catById = useMemo(() => new Map(cats.map((c) => [c.id, c])), [cats]);
+
+  // lista corrida agrupada por grupo > subgrupo
+  const agrupados = useMemo(() => {
+    const arr = [...produtos].sort((a, b) => {
+      const ga = (a.grupo ?? "Outros").localeCompare(b.grupo ?? "Outros");
+      if (ga !== 0) return ga;
+      const sa = (a.subgrupo ?? "—").localeCompare(b.subgrupo ?? "—");
+      if (sa !== 0) return sa;
+      return a.nome.localeCompare(b.nome);
+    });
+    const map = new Map<string, Map<string, typeof arr>>();
+    for (const p of arr) {
+      const g = p.grupo ?? "Outros";
+      const sg = p.subgrupo ?? "—";
+      if (!map.has(g)) map.set(g, new Map());
+      const sub = map.get(g)!;
+      if (!sub.has(sg)) sub.set(sg, []);
+      sub.get(sg)!.push(p);
+    }
+    return Array.from(map.entries()).map(([grupo, subs2]) => ({
+      grupo,
+      subgrupos: Array.from(subs2.entries()).map(([subgrupo, itens]) => ({ subgrupo, itens })),
+    }));
+  }, [produtos]);
 
   const mSave = useMutation({
     mutationFn: upsertProduto,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.produtos }); toast.success("Salvo"); setEditing(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.produtos });
+      toast.success("Salvo");
+      setEditing(null);
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   const mDel = useMutation({
     mutationFn: deleteProduto,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.produtos }); toast.success("Excluído"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.produtos });
+      toast.success("Excluído");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   if (!user) return null;
   const podeEditar = user.role === "admin" || user.role === "gerente";
 
-  const lista = produtos.filter((p) => {
-    if (filtroCat !== "todos") {
-      const sub = p.subcategoria_id ? subById.get(p.subcategoria_id) : undefined;
-      if (sub?.categoria_id !== filtroCat) return false;
-    }
-    if (busca && !p.nome.toLowerCase().includes(busca.toLowerCase())) return false;
-    return true;
-  });
-
   function novo() {
     setEditing({
-      nome: "", unidade: "un",
-      subcategoria_id: null, default_sublocal_id: null,
-      estoque_minimo: 0, valor_unit: null, ativo: true,
+      nome: "",
+      unidade: "un",
+      subcategoria_id: null,
+      default_sublocal_id: null,
+      estoque_minimo: 0,
+      valor_unit: null,
+      ativo: true,
     });
   }
 
@@ -99,78 +128,102 @@ function ProdutosPage() {
   }
   function abrir(p: Produto) {
     setEditing({
-      id: p.id, nome: p.nome, unidade: p.unidade,
-      subcategoria_id: p.subcategoria_id, default_sublocal_id: p.default_sublocal_id,
-      estoque_minimo: Number(p.estoque_minimo), valor_unit: p.valor_unit, ativo: p.ativo,
+      id: p.id,
+      nome: p.nome,
+      unidade: p.unidade,
+      subcategoria_id: p.subcategoria_id,
+      default_sublocal_id: p.default_sublocal_id,
+      estoque_minimo: Number(p.estoque_minimo),
+      valor_unit: p.valor_unit,
+      ativo: p.ativo,
     });
   }
 
-  // subcategorias filtradas para o produto sendo editado (todas as categorias)
   const editSubsDisponiveis = subs;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-6">
       <div>
         <Link to="/estoque" className="inline-flex items-center gap-1 text-xs text-muted-foreground">
           <ArrowLeft className="h-3 w-3" /> Estoque
         </Link>
         <div className="mt-2 flex items-center justify-between">
           <h1 className="font-display text-xl font-bold">Produtos</h1>
-          {podeEditar && <Button size="sm" onClick={novo}><Plus className="mr-1 h-4 w-4" /> Novo</Button>}
+          {podeEditar && (
+            <Button size="sm" onClick={novo}>
+              <Plus className="mr-1 h-4 w-4" /> Novo
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <Input placeholder="Buscar..." value={busca} onChange={(e) => setBusca(e.target.value)} />
-        <Select value={filtroCat} onValueChange={setFiltroCat}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todas</SelectItem>
-            {cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        {lista.length === 0 && (
-          <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Nenhum produto.</CardContent></Card>
+      <div className="space-y-5">
+        {produtos.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">Nenhum produto.</CardContent>
+          </Card>
         )}
-        {lista.map((p) => {
-          const sub = p.subcategoria_id ? subById.get(p.subcategoria_id) : undefined;
-          const cat = sub ? catById.get(sub.categoria_id) : undefined;
-          return (
-            <Card key={p.id}>
-              <CardContent className="flex items-center gap-2 p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{p.nome}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    {cat?.nome ?? "—"}{sub ? ` · ${sub.nome}` : ""} · {p.unidade}
-                  </p>
+        {agrupados.map(({ grupo, subgrupos }) => (
+          <section key={grupo}>
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">{grupo}</h2>
+            <div className="space-y-3">
+              {subgrupos.map(({ subgrupo, itens }) => (
+                <div key={subgrupo}>
+                  {subgrupos.length > 1 || subgrupo !== "—" ? (
+                    <p className="mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">{subgrupo}</p>
+                  ) : null}
+                  <div className="space-y-1.5">
+                    {itens.map((p) => (
+                      <Card key={p.id}>
+                        <CardContent className="flex items-center gap-2 p-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{p.nome}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {p.unidade}
+                              {p.valor_unit != null ? ` · R$ ${Number(p.valor_unit).toFixed(2)}` : ""}
+                              {` · mín ${Number(p.estoque_minimo)}`}
+                            </p>
+                          </div>
+                          {podeEditar && (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8"
+                                onClick={() => abrir(p)}
+                                title="Editar"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              {user.role === "admin" && (
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => excluir(p)}
+                                  title="Excluir"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-                <div className="text-right text-[10px] text-muted-foreground">
-                  mín {Number(p.estoque_minimo)}
-                </div>
-                {podeEditar && (
-                  <>
-                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => abrir(p)} title="Editar">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    {user.role === "admin" && (
-                      <Button size="icon" variant="outline" className="h-8 w-8 text-destructive" onClick={() => excluir(p)} title="Excluir">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing?.id ? "Editar" : "Novo"} produto</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editing?.id ? "Editar" : "Novo"} produto</DialogTitle>
+          </DialogHeader>
           {editing && (
             <div className="space-y-3">
               <div>
@@ -184,12 +237,19 @@ function ProdutosPage() {
                     value={editing.subcategoria_id ?? NONE}
                     onValueChange={(v) => setEditing({ ...editing, subcategoria_id: v === NONE ? null : v })}
                   >
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>—</SelectItem>
                       {editSubsDisponiveis.map((s) => {
                         const c = catById.get(s.categoria_id);
-                        return <SelectItem key={s.id} value={s.id}>{c?.nome ? `${c.nome} / ` : ""}{s.nome}</SelectItem>;
+                        return (
+                          <SelectItem key={s.id} value={s.id}>
+                            {c?.nome ? `${c.nome} / ` : ""}
+                            {s.nome}
+                          </SelectItem>
+                        );
                       })}
                     </SelectContent>
                   </Select>
@@ -197,9 +257,15 @@ function ProdutosPage() {
                 <div>
                   <label className="text-xs text-muted-foreground">Unidade</label>
                   <Select value={editing.unidade} onValueChange={(v) => setEditing({ ...editing, unidade: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {UNIDADES.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                      {UNIDADES.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -210,30 +276,49 @@ function ProdutosPage() {
                   value={editing.default_sublocal_id ?? NONE}
                   onValueChange={(v) => setEditing({ ...editing, default_sublocal_id: v === NONE ? null : v })}
                 >
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>—</SelectItem>
-                    {sublocais.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                    {sublocais.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.nome}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-muted-foreground">Estoque mínimo</label>
-                  <Input type="number" value={editing.estoque_minimo}
-                    onChange={(e) => setEditing({ ...editing, estoque_minimo: Number(e.target.value) || 0 })} />
+                  <Input
+                    type="number"
+                    value={editing.estoque_minimo}
+                    onChange={(e) => setEditing({ ...editing, estoque_minimo: Number(e.target.value) || 0 })}
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Valor unitário (R$)</label>
-                  <Input type="number" step="0.01" value={editing.valor_unit ?? ""}
-                    onChange={(e) => setEditing({ ...editing, valor_unit: e.target.value === "" ? null : Number(e.target.value) })} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editing.valor_unit ?? ""}
+                    onChange={(e) =>
+                      setEditing({ ...editing, valor_unit: e.target.value === "" ? null : Number(e.target.value) })
+                    }
+                  />
                 </div>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={salvar} disabled={mSave.isPending}>Salvar</Button>
+            <Button variant="outline" onClick={() => setEditing(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={salvar} disabled={mSave.isPending}>
+              Salvar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
