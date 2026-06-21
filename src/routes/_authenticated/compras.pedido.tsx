@@ -135,7 +135,7 @@ function PedidoPage() {
     if (!user || itensSelecionados.length === 0) return;
     setSalvando(true);
 
-    const { data: req, error: e1 } = await supabase
+    const { data: req, error: e1 } = await sb
       .from("requisicoes_compra")
       .insert({
         usuario_id: user.id,
