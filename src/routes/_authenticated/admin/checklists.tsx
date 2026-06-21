@@ -21,6 +21,7 @@ import {
   groupBySetor,
   qk,
 } from "@/lib/checklists-db";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,33 @@ function ChecklistsAdminPage() {
     queryKey: qk.itens(tipo),
     queryFn: () => fetchItens(tipo),
     enabled: !!user,
+  });
+  const rolesQuery = useQuery({
+    queryKey: ["db", "checklist_roles", "ativos"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("checklist_roles")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+    enabled: !!user,
+  });
+  const setRoleMut = useMutation({
+    mutationFn: async (vars: { id: string; role_id: string | null }) => {
+      const { error } = await (supabase as any)
+        .from("checklist_itens")
+        .update({ role_id: vars.role_id })
+        .eq("id", vars.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.itensAll });
+      toast.success("Responsável atualizado");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const invalidateItens = () =>
@@ -164,6 +192,7 @@ function ChecklistsAdminPage() {
   const setores = setoresQuery.data ?? [];
   const setorNomes = setores.map((s) => s.nome);
   const itens = itensQuery.data ?? [];
+  const roles = rolesQuery.data ?? [];
   const groups = useMemo(() => groupBySetor(itens), [itens]);
 
   if (!novoSetor && setorNomes.length > 0) {
@@ -377,6 +406,27 @@ function ChecklistsAdminPage() {
                             {TIPOS.map((t) => (
                               <SelectItem key={t} value={t}>
                                 {CHECKLIST_META[t].titulo}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={(it as any).role_id ?? "__none__"}
+                          onValueChange={(v) =>
+                            setRoleMut.mutate({
+                              id: it.id,
+                              role_id: v === "__none__" ? null : v,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8 min-w-[8rem] text-xs">
+                            <SelectValue placeholder="Responsável" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Sem responsável</SelectItem>
+                            {roles.map((r) => (
+                              <SelectItem key={r.id} value={r.id}>
+                                {r.nome}
                               </SelectItem>
                             ))}
                           </SelectContent>
