@@ -9,10 +9,10 @@ export type Categoria = Database["public"]["Tables"]["categorias"]["Row"];
 export type Subcategoria = Database["public"]["Tables"]["subcategorias"]["Row"];
 export type Produto = Database["public"]["Tables"]["produtos"]["Row"] & {
   // Colunas existentes no banco mas ainda não refletidas no types.ts gerado
-  grupo: string | null;
-  subgrupo: string | null;
-  compravel: boolean | null;
-  fornecedor_id: string | null;
+  grupo?: string | null;
+  subgrupo?: string | null;
+  compravel?: boolean | null;
+  fornecedor_id?: string | null;
 };
 
 export type Lider = Database["public"]["Enums"]["lider_tipo"];
