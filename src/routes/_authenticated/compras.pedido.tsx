@@ -87,7 +87,7 @@ function PedidoPage() {
       return;
     }
     const map: Record<string, number> = {};
-    itens.forEach((i) => {
+    itens.forEach((i: { produto_id: string; quantidade: number }) => {
       if (i.produto_id) map[i.produto_id] = Number(i.quantidade);
     });
     setQuantidades(map);
