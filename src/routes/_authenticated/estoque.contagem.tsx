@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, ClipboardCheck, Save, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,20 +33,16 @@ function ContagemPage() {
   const sublocais = sublocaisQ.data ?? [];
   const locais = locaisQ.data ?? [];
 
-  const produtosDoSublocal = useMemo(
-    () => (produtosQ.data ?? []).filter((p) => p.ativo && p.default_sublocal_id === sublocalId),
-    [produtosQ.data, sublocalId],
-  );
+  // TODOS os produtos ativos (não filtra por default_sublocal) — conta a lista completa
+  const produtosAtivos = useMemo(() => (produtosQ.data ?? []).filter((p) => p.ativo), [produtosQ.data]);
 
-  // Contagem por sub-local (saldos já lançados)
   const sublocaisComStatus = useMemo(() => {
     const saldoSet = new Set((saldosQ.data ?? []).filter((s) => Number(s.quantidade) !== 0).map((s) => s.sublocal_id));
     return sublocais.map((s) => {
-      const total = (produtosQ.data ?? []).filter((p) => p.ativo && p.default_sublocal_id === s.id).length;
       const local = locais.find((l) => l.id === s.local_id);
-      return { ...s, total, jaContado: saldoSet.has(s.id), localNome: local?.nome ?? "" };
+      return { ...s, jaContado: saldoSet.has(s.id), localNome: local?.nome ?? "" };
     });
-  }, [sublocais, produtosQ.data, saldosQ.data, locais]);
+  }, [sublocais, saldosQ.data, locais]);
 
   const saldoMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -55,14 +50,38 @@ function ContagemPage() {
     return m;
   }, [saldosQ.data]);
 
+  // lista filtrada e ordenada por grupo > subgrupo > nome (para visualizar)
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    if (!q) return produtosDoSublocal;
-    return produtosDoSublocal.filter((p) => p.nome.toLowerCase().includes(q));
-  }, [produtosDoSublocal, busca]);
+    const arr = produtosAtivos.filter((p) => !q || p.nome.toLowerCase().includes(q));
+    return [...arr].sort((a, b) => {
+      const ga = (a.grupo ?? "Outros").localeCompare(b.grupo ?? "Outros");
+      if (ga !== 0) return ga;
+      const sa = (a.subgrupo ?? "—").localeCompare(b.subgrupo ?? "—");
+      if (sa !== 0) return sa;
+      return a.nome.localeCompare(b.nome);
+    });
+  }, [produtosAtivos, busca]);
+
+  // agrupa para render
+  const agrupados = useMemo(() => {
+    const map = new Map<string, Map<string, typeof filtrados>>();
+    for (const p of filtrados) {
+      const g = p.grupo ?? "Outros";
+      const sg = p.subgrupo ?? "—";
+      if (!map.has(g)) map.set(g, new Map());
+      const sub = map.get(g)!;
+      if (!sub.has(sg)) sub.set(sg, []);
+      sub.get(sg)!.push(p);
+    }
+    return Array.from(map.entries()).map(([grupo, subs]) => ({
+      grupo,
+      subgrupos: Array.from(subs.entries()).map(([subgrupo, itens]) => ({ subgrupo, itens })),
+    }));
+  }, [filtrados]);
 
   const preenchidos = Object.entries(qtds).filter(([, v]) => v.trim() !== "" && !isNaN(Number(v)));
-  const total = produtosDoSublocal.length;
+  const total = produtosAtivos.length;
   const progresso = total > 0 ? Math.round((preenchidos.length / total) * 100) : 0;
 
   const focusNext = useCallback(
@@ -77,7 +96,7 @@ function ContagemPage() {
   const marcarRestantesZero = () => {
     setQtds((cur) => {
       const next = { ...cur };
-      for (const p of produtosDoSublocal) {
+      for (const p of produtosAtivos) {
         if (next[p.id] === undefined || next[p.id].trim() === "") next[p.id] = "0";
       }
       return next;
@@ -97,7 +116,7 @@ function ContagemPage() {
     onSuccess: (n) => {
       qc.invalidateQueries({ queryKey: mqk.saldos });
       qc.invalidateQueries({ queryKey: mqk.movimentos });
-      toast.success(`${n} produto(s) salvos. Escolha o próximo sub-local.`);
+      toast.success(`${n} produto(s) salvos.`);
       setQtds({});
       setBusca("");
       setSublocalId("");
@@ -110,16 +129,16 @@ function ContagemPage() {
   const podeEditar = user.role === "admin" || user.role === "gerente";
 
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4 pb-28">
       <Link to="/estoque" className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <ArrowLeft className="h-3 w-3" /> Estoque
       </Link>
       <div>
         <h1 className="font-display text-xl font-bold flex items-center gap-2">
-          <ClipboardCheck className="h-5 w-5 text-primary" /> Contagem inicial
+          <ClipboardCheck className="h-5 w-5 text-primary" /> Contagem de estoque
         </h1>
         <p className="text-xs text-muted-foreground">
-          Conte uma estante por vez. Use Enter pra ir pro próximo produto. "Marcar restantes como 0" preenche o resto.
+          Escolha o local e veja a lista completa de produtos. Digite a quantidade de cada um.
         </p>
       </div>
 
@@ -135,7 +154,7 @@ function ContagemPage() {
         <Card>
           <CardContent className="space-y-2 p-3">
             <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-              <ListChecks className="h-3 w-3" /> Escolha um sub-local
+              <ListChecks className="h-3 w-3" /> Escolha o local para contar
             </p>
             <div className="grid grid-cols-1 gap-1.5">
               {sublocaisComStatus.map((s) => (
@@ -148,16 +167,14 @@ function ContagemPage() {
                     <p className="font-medium truncate">
                       {s.localNome} · {s.nome}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">{s.total} produto(s)</p>
+                    <p className="text-[10px] text-muted-foreground">{produtosAtivos.length} produto(s)</p>
                   </div>
                   {s.jaContado ? (
                     <span className="text-[10px] rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-600">
-                      contado
+                      tem estoque
                     </span>
                   ) : (
-                    <span className="text-[10px] rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-600">
-                      pendente
-                    </span>
+                    <span className="text-[10px] rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-600">vazio</span>
                   )}
                 </button>
               ))}
@@ -172,7 +189,7 @@ function ContagemPage() {
             <CardContent className="space-y-2 p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Contando</p>
+                  <p className="text-xs text-muted-foreground">Contando em</p>
                   <p className="text-sm font-semibold truncate">
                     {(() => {
                       const s = sublocais.find((x) => x.id === sublocalId);
@@ -181,7 +198,15 @@ function ContagemPage() {
                     })()}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => { setSublocalId(""); setQtds({}); setBusca(""); }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSublocalId("");
+                    setQtds({});
+                    setBusca("");
+                  }}
+                >
                   Trocar
                 </Button>
               </div>
@@ -189,53 +214,76 @@ function ContagemPage() {
               <p className="text-[10px] text-muted-foreground">
                 {preenchidos.length} de {total} preenchido(s) ({progresso}%)
               </p>
-              <Input placeholder="Buscar produto..." value={busca} onChange={(e) => setBusca(e.target.value)} />
-              <Button variant="outline" size="sm" className="w-full" onClick={marcarRestantesZero} disabled={!podeEditar}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={marcarRestantesZero}
+                disabled={!podeEditar}
+              >
                 Marcar restantes como 0
               </Button>
             </CardContent>
           </Card>
 
-          <div className="space-y-1.5">
-            {filtrados.map((p) => {
-              const saldoAtual = saldoMap.get(`${p.id}:${sublocalId}`) ?? 0;
-              return (
-                <Card key={p.id}>
-                  <CardContent className="flex items-center gap-2 p-2.5">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{p.nome}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        atual: {fmtQty(saldoAtual, p.unidade)} · mín {fmtQty(Number(p.estoque_minimo), p.unidade)}
-                      </p>
+          <div className="space-y-5">
+            {agrupados.map(({ grupo, subgrupos }) => (
+              <section key={grupo}>
+                <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">{grupo}</h2>
+                <div className="space-y-3">
+                  {subgrupos.map(({ subgrupo, itens }) => (
+                    <div key={subgrupo}>
+                      {subgrupos.length > 1 || subgrupo !== "—" ? (
+                        <p className="mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">{subgrupo}</p>
+                      ) : null}
+                      <div className="space-y-1.5">
+                        {itens.map((p) => {
+                          const saldoAtual = saldoMap.get(`${p.id}:${sublocalId}`) ?? 0;
+                          return (
+                            <Card key={p.id}>
+                              <CardContent className="flex items-center gap-2 p-2.5">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium truncate">{p.nome}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    atual: {fmtQty(saldoAtual, p.unidade)}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    ref={(el) => {
+                                      inputsRef.current[p.id] = el;
+                                    }}
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="any"
+                                    className="h-9 w-20 text-right"
+                                    placeholder="0"
+                                    value={qtds[p.id] ?? ""}
+                                    onChange={(e) => setQtds((s) => ({ ...s, [p.id]: e.target.value }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        focusNext(p.id);
+                                      }
+                                    }}
+                                    disabled={!podeEditar}
+                                  />
+                                  <span className="text-[10px] w-8 text-muted-foreground">{p.unidade}</span>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Input
-                        ref={(el) => { inputsRef.current[p.id] = el; }}
-                        type="number"
-                        inputMode="decimal"
-                        step="any"
-                        className="h-9 w-20 text-right"
-                        placeholder="0"
-                        value={qtds[p.id] ?? ""}
-                        onChange={(e) => setQtds((s) => ({ ...s, [p.id]: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            focusNext(p.id);
-                          }
-                        }}
-                        disabled={!podeEditar}
-                      />
-                      <span className="text-[10px] w-8 text-muted-foreground">{p.unidade}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  ))}
+                </div>
+              </section>
+            ))}
             {filtrados.length === 0 && (
               <Card>
                 <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                  Nenhum produto neste sub-local.
+                  Nenhum produto encontrado.
                 </CardContent>
               </Card>
             )}
