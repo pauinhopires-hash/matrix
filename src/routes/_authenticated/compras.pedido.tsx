@@ -67,7 +67,7 @@ function PedidoPage() {
 
   const repetirUltimo = async () => {
     if (!user) return;
-    const { data: req } = await supabase
+    const { data: req } = await sb
       .from("requisicoes_compra")
       .select("id")
       .eq("usuario_id", user.id)
@@ -78,7 +78,7 @@ function PedidoPage() {
       toast.info("Nenhum pedido anterior encontrado");
       return;
     }
-    const { data: itens } = await supabase
+    const { data: itens } = await sb
       .from("requisicao_compra_itens")
       .select("produto_id, quantidade")
       .eq("requisicao_id", req.id);
