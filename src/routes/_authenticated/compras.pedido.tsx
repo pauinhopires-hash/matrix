@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
+// Cliente sem tipo estrito p/ tabelas/colunas ainda não refletidas no types.ts gerado
+const sb = supabase as unknown as { from: (t: string) => any };
+
 export const Route = createFileRoute("/_authenticated/compras/pedido")({
   component: PedidoPage,
 });
@@ -39,7 +42,7 @@ function PedidoPage() {
     (async () => {
       setCarregando(true);
       const [{ data: prods, error: e1 }, { data: sal }] = await Promise.all([
-        supabase.from("produtos").select("id, nome, unidade, grupo, subgrupo").eq("ativo", true).order("nome"),
+        sb.from("produtos").select("id, nome, unidade, grupo, subgrupo").eq("ativo", true).order("nome"),
         supabase.from("saldos").select("produto_id, quantidade"),
       ]);
       if (e1) toast.error("Erro ao carregar produtos", { description: e1.message });
@@ -64,7 +67,7 @@ function PedidoPage() {
 
   const repetirUltimo = async () => {
     if (!user) return;
-    const { data: req } = await supabase
+    const { data: req } = await sb
       .from("requisicoes_compra")
       .select("id")
       .eq("usuario_id", user.id)
@@ -75,7 +78,7 @@ function PedidoPage() {
       toast.info("Nenhum pedido anterior encontrado");
       return;
     }
-    const { data: itens } = await supabase
+    const { data: itens } = await sb
       .from("requisicao_compra_itens")
       .select("produto_id, quantidade")
       .eq("requisicao_id", req.id);
@@ -84,7 +87,7 @@ function PedidoPage() {
       return;
     }
     const map: Record<string, number> = {};
-    itens.forEach((i) => {
+    itens.forEach((i: { produto_id: string; quantidade: number }) => {
       if (i.produto_id) map[i.produto_id] = Number(i.quantidade);
     });
     setQuantidades(map);
@@ -132,7 +135,7 @@ function PedidoPage() {
     if (!user || itensSelecionados.length === 0) return;
     setSalvando(true);
 
-    const { data: req, error: e1 } = await supabase
+    const { data: req, error: e1 } = await sb
       .from("requisicoes_compra")
       .insert({
         usuario_id: user.id,
@@ -155,7 +158,7 @@ function PedidoPage() {
       unidade: unidadesOverride[produto_id] || null,
     }));
 
-    const { error: e2 } = await supabase.from("requisicao_compra_itens").insert(itens);
+    const { error: e2 } = await sb.from("requisicao_compra_itens").insert(itens);
     setSalvando(false);
     if (e2) {
       toast.error("Erro ao salvar itens", { description: e2.message });

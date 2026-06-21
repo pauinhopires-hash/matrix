@@ -36,6 +36,7 @@ import { Route as AuthenticatedComprasHistoricoRouteImport } from './routes/_aut
 import { Route as AuthenticatedChecklistTipoRouteImport } from './routes/_authenticated/checklist.$tipo'
 import { Route as AuthenticatedAdminUsuariosRouteImport } from './routes/_authenticated/admin/usuarios'
 import { Route as AuthenticatedAdminRequisicoesCompraRouteImport } from './routes/_authenticated/admin/requisicoes-compra'
+import { Route as AuthenticatedAdminPapeisOperacionaisRouteImport } from './routes/_authenticated/admin/papeis-operacionais'
 import { Route as AuthenticatedAdminFornecedoresRouteImport } from './routes/_authenticated/admin/fornecedores'
 import { Route as AuthenticatedAdminChecklistsRouteImport } from './routes/_authenticated/admin/checklists'
 
@@ -191,6 +192,12 @@ const AuthenticatedAdminRequisicoesCompraRoute =
     path: '/admin/requisicoes-compra',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminPapeisOperacionaisRoute =
+  AuthenticatedAdminPapeisOperacionaisRouteImport.update({
+    id: '/admin/papeis-operacionais',
+    path: '/admin/papeis-operacionais',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminFornecedoresRoute =
   AuthenticatedAdminFornecedoresRouteImport.update({
     id: '/admin/fornecedores',
@@ -215,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/admin/checklists': typeof AuthenticatedAdminChecklistsRoute
   '/admin/fornecedores': typeof AuthenticatedAdminFornecedoresRoute
+  '/admin/papeis-operacionais': typeof AuthenticatedAdminPapeisOperacionaisRoute
   '/admin/requisicoes-compra': typeof AuthenticatedAdminRequisicoesCompraRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/checklist/$tipo': typeof AuthenticatedChecklistTipoRoute
@@ -244,6 +252,7 @@ export interface FileRoutesByTo {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/admin/checklists': typeof AuthenticatedAdminChecklistsRoute
   '/admin/fornecedores': typeof AuthenticatedAdminFornecedoresRoute
+  '/admin/papeis-operacionais': typeof AuthenticatedAdminPapeisOperacionaisRoute
   '/admin/requisicoes-compra': typeof AuthenticatedAdminRequisicoesCompraRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/checklist/$tipo': typeof AuthenticatedChecklistTipoRoute
@@ -276,6 +285,7 @@ export interface FileRoutesById {
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/admin/checklists': typeof AuthenticatedAdminChecklistsRoute
   '/_authenticated/admin/fornecedores': typeof AuthenticatedAdminFornecedoresRoute
+  '/_authenticated/admin/papeis-operacionais': typeof AuthenticatedAdminPapeisOperacionaisRoute
   '/_authenticated/admin/requisicoes-compra': typeof AuthenticatedAdminRequisicoesCompraRoute
   '/_authenticated/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/_authenticated/checklist/$tipo': typeof AuthenticatedChecklistTipoRoute
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/admin/checklists'
     | '/admin/fornecedores'
+    | '/admin/papeis-operacionais'
     | '/admin/requisicoes-compra'
     | '/admin/usuarios'
     | '/checklist/$tipo'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/admin/checklists'
     | '/admin/fornecedores'
+    | '/admin/papeis-operacionais'
     | '/admin/requisicoes-compra'
     | '/admin/usuarios'
     | '/checklist/$tipo'
@@ -368,6 +380,7 @@ export interface FileRouteTypes {
     | '/_authenticated/perfil'
     | '/_authenticated/admin/checklists'
     | '/_authenticated/admin/fornecedores'
+    | '/_authenticated/admin/papeis-operacionais'
     | '/_authenticated/admin/requisicoes-compra'
     | '/_authenticated/admin/usuarios'
     | '/_authenticated/checklist/$tipo'
@@ -588,6 +601,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRequisicoesCompraRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/papeis-operacionais': {
+      id: '/_authenticated/admin/papeis-operacionais'
+      path: '/admin/papeis-operacionais'
+      fullPath: '/admin/papeis-operacionais'
+      preLoaderRoute: typeof AuthenticatedAdminPapeisOperacionaisRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/fornecedores': {
       id: '/_authenticated/admin/fornecedores'
       path: '/admin/fornecedores'
@@ -642,6 +662,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedAdminChecklistsRoute: typeof AuthenticatedAdminChecklistsRoute
   AuthenticatedAdminFornecedoresRoute: typeof AuthenticatedAdminFornecedoresRoute
+  AuthenticatedAdminPapeisOperacionaisRoute: typeof AuthenticatedAdminPapeisOperacionaisRoute
   AuthenticatedAdminRequisicoesCompraRoute: typeof AuthenticatedAdminRequisicoesCompraRoute
   AuthenticatedAdminUsuariosRoute: typeof AuthenticatedAdminUsuariosRoute
   AuthenticatedChecklistTipoRoute: typeof AuthenticatedChecklistTipoRoute
@@ -657,6 +678,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedAdminChecklistsRoute: AuthenticatedAdminChecklistsRoute,
   AuthenticatedAdminFornecedoresRoute: AuthenticatedAdminFornecedoresRoute,
+  AuthenticatedAdminPapeisOperacionaisRoute:
+    AuthenticatedAdminPapeisOperacionaisRoute,
   AuthenticatedAdminRequisicoesCompraRoute:
     AuthenticatedAdminRequisicoesCompraRoute,
   AuthenticatedAdminUsuariosRoute: AuthenticatedAdminUsuariosRoute,
