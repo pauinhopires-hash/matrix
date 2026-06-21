@@ -11,20 +11,14 @@ export function AppHeader({ title }: { title?: string }) {
             <Flame className="h-4 w-4" />
           </div>
           <div className="leading-tight">
-            <p className="font-display text-sm font-semibold">Misturaria</p>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              {title ?? "Control"}
-            </p>
+            <p className="font-display text-sm font-semibold">Misturaria Control</p>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{title ?? "Matrix"}</p>
           </div>
         </div>
         {user && (
           <div className="flex items-center gap-2">
             {user.fotoDataUrl ? (
-              <img
-                src={user.fotoDataUrl}
-                alt={user.nome}
-                className="h-9 w-9 rounded-full object-cover"
-              />
+              <img src={user.fotoDataUrl} alt={user.nome} className="h-9 w-9 rounded-full object-cover" />
             ) : (
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-semibold uppercase">
                 {user.nome.slice(0, 1)}
