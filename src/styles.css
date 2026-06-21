@@ -6,8 +6,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -49,38 +49,38 @@
 
 :root {
   --radius: 0.75rem;
-  /* Charcoal & Ember (dark by default) */
-  --background: oklch(0.18 0 0);
-  --foreground: oklch(0.97 0 0);
-  --card: oklch(0.235 0 0);
-  --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.235 0 0);
-  --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.68 0.17 38);
-  --primary-foreground: oklch(0.15 0 0);
-  --secondary: oklch(0.3 0 0);
-  --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.3 0 0);
-  --muted-foreground: oklch(0.7 0 0);
-  --accent: oklch(0.68 0.17 38);
-  --accent-foreground: oklch(0.15 0 0);
+  /* Misturaria Control Matrix — paleta verde */
+  --background: oklch(0.16 0.01 170);
+  --foreground: oklch(0.95 0.012 160);
+  --card: oklch(0.25 0.045 162);
+  --card-foreground: oklch(0.95 0.012 160);
+  --popover: oklch(0.25 0.045 162);
+  --popover-foreground: oklch(0.95 0.012 160);
+  --primary: oklch(0.65 0.14 156);
+  --primary-foreground: oklch(0.16 0.02 160);
+  --secondary: oklch(0.42 0.095 158);
+  --secondary-foreground: oklch(0.95 0.012 160);
+  --muted: oklch(0.3 0.04 160);
+  --muted-foreground: oklch(0.72 0.03 160);
+  --accent: oklch(0.65 0.14 156);
+  --accent-foreground: oklch(0.16 0.02 160);
   --destructive: oklch(0.62 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --success: oklch(0.7 0.16 150);
-  --success-foreground: oklch(0.15 0 0);
+  --success: oklch(0.72 0.15 150);
+  --success-foreground: oklch(0.16 0.02 160);
   --warning: oklch(0.8 0.16 80);
-  --warning-foreground: oklch(0.15 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.68 0.17 38);
-  --sidebar: oklch(0.235 0 0);
-  --sidebar-foreground: oklch(0.97 0 0);
-  --sidebar-primary: oklch(0.68 0.17 38);
-  --sidebar-primary-foreground: oklch(0.15 0 0);
-  --sidebar-accent: oklch(0.3 0 0);
-  --sidebar-accent-foreground: oklch(0.97 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.68 0.17 38);
+  --warning-foreground: oklch(0.16 0 0);
+  --border: oklch(0.9 0.03 160 / 12%);
+  --input: oklch(0.9 0.03 160 / 14%);
+  --ring: oklch(0.65 0.14 156);
+  --sidebar: oklch(0.25 0.045 162);
+  --sidebar-foreground: oklch(0.95 0.012 160);
+  --sidebar-primary: oklch(0.65 0.14 156);
+  --sidebar-primary-foreground: oklch(0.16 0.02 160);
+  --sidebar-accent: oklch(0.42 0.095 158);
+  --sidebar-accent-foreground: oklch(0.95 0.012 160);
+  --sidebar-border: oklch(0.9 0.03 160 / 12%);
+  --sidebar-ring: oklch(0.65 0.14 156);
 }
 
 @layer base {
@@ -88,14 +88,18 @@
     border-color: var(--color-border);
   }
 
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
   }
