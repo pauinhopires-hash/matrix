@@ -50,6 +50,18 @@ function ProdutosPage() {
   const { data: cats = [] } = useQuery({ queryKey: qk.categorias, queryFn: fetchCategorias });
   const { data: subs = [] } = useQuery({ queryKey: qk.subcategorias, queryFn: fetchSubcategorias });
   const { data: sublocais = [] } = useQuery({ queryKey: qk.sublocais, queryFn: fetchSublocais });
+  const { data: papeis = [] } = useQuery({
+    queryKey: ["db", "checklist_roles", "ativos"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("checklist_roles")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+  });
 
   const catById = useMemo(() => new Map(cats.map((c) => [c.id, c])), [cats]);
 
