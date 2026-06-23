@@ -18,7 +18,10 @@ type Produto = {
   unidade: string;
   grupo: string | null;
   subgrupo: string | null;
+  role_id: string | null;
 };
+
+type Papel = { id: string; nome: string };
 
 function PedidoPage() {
   const navigate = useNavigate();
