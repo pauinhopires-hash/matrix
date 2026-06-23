@@ -313,6 +313,7 @@ export type Database = {
           foto_url: string | null
           id: string
           nome: string
+          role_id: string | null
           subcategoria_id: string | null
           unidade: string
           updated_at: string
@@ -326,6 +327,7 @@ export type Database = {
           foto_url?: string | null
           id?: string
           nome: string
+          role_id?: string | null
           subcategoria_id?: string | null
           unidade?: string
           updated_at?: string
@@ -339,6 +341,7 @@ export type Database = {
           foto_url?: string | null
           id?: string
           nome?: string
+          role_id?: string | null
           subcategoria_id?: string | null
           unidade?: string
           updated_at?: string
@@ -350,6 +353,13 @@ export type Database = {
             columns: ["default_sublocal_id"]
             isOneToOne: false
             referencedRelation: "sublocais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_roles"
             referencedColumns: ["id"]
           },
           {
