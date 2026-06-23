@@ -21,7 +21,7 @@ import {
   Sun,
   Moon,
   Package,
-  ChefHat,
+  Users,
   ShieldCheck,
   ShoppingCart,
   ChevronRight,
@@ -64,15 +64,10 @@ function Dashboard() {
   // Saldos totais por produto (soma de todos os sublocais)
   const saldoTotalByProduto = new Map<string, number>();
   for (const s of saldos) {
-    saldoTotalByProduto.set(
-      s.produto_id,
-      (saldoTotalByProduto.get(s.produto_id) ?? 0) + Number(s.quantidade),
-    );
+    saldoTotalByProduto.set(s.produto_id, (saldoTotalByProduto.get(s.produto_id) ?? 0) + Number(s.quantidade));
   }
 
-  const alertas = produtos.filter(
-    (p) => p.ativo && (saldoTotalByProduto.get(p.id) ?? 0) < Number(p.estoque_minimo),
-  );
+  const alertas = produtos.filter((p) => p.ativo && (saldoTotalByProduto.get(p.id) ?? 0) < Number(p.estoque_minimo));
 
   const cards = TIPOS.map((tipo) => {
     const itensDoTipo = filterBySetor(
@@ -111,16 +106,11 @@ function Dashboard() {
             <CardContent className="flex items-center gap-3 p-3">
               <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-destructive">
-                  {alertas.length} item(ns) abaixo do mínimo
-                </p>
+                <p className="text-sm font-semibold text-destructive">{alertas.length} item(ns) abaixo do mínimo</p>
                 <p className="truncate text-[11px] text-muted-foreground">
                   {alertas
                     .slice(0, 3)
-                    .map(
-                      (p) =>
-                        `${p.nome} (${fmtQty(saldoTotalByProduto.get(p.id) ?? 0, p.unidade)})`,
-                    )
+                    .map((p) => `${p.nome} (${fmtQty(saldoTotalByProduto.get(p.id) ?? 0, p.unidade)})`)
                     .join(" · ")}
                 </p>
               </div>
@@ -131,20 +121,13 @@ function Dashboard() {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Checklists de hoje
-        </h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Checklists de hoje</h2>
         {cards.map(({ tipo, total, done, status }) => {
           const meta = CHECKLIST_META[tipo];
           const Icon = ICONS[meta.icon as keyof typeof ICONS];
           const pct = total === 0 ? 0 : Math.round((done / total) * 100);
           return (
-            <Link
-              key={tipo}
-              to="/checklist/$tipo"
-              params={{ tipo }}
-              className="block"
-            >
+            <Link key={tipo} to="/checklist/$tipo" params={{ tipo }} className="block">
               <Card className="transition active:scale-[0.99]">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
@@ -156,16 +139,11 @@ function Dashboard() {
                       <StatusBadge status={status} />
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {total === 0
-                        ? "Sem itens para o seu setor"
-                        : `${done}/${total} concluídos`}
+                      {total === 0 ? "Sem itens para o seu setor" : `${done}/${total} concluídos`}
                     </p>
                     {total > 0 && (
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
+                        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                       </div>
                     )}
                   </div>
@@ -178,9 +156,7 @@ function Dashboard() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Módulos
-        </h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Módulos</h2>
         <div className="grid grid-cols-2 gap-3">
           <Link to="/estoque" className="block">
             <Card className="transition active:scale-[0.99]">
@@ -189,9 +165,7 @@ function Dashboard() {
                   <Package className="h-4 w-4" />
                 </div>
                 <p className="text-sm font-medium">Estoque</p>
-                <p className="text-[10px] text-muted-foreground">
-                  Saldo, retiradas e porcionamento
-                </p>
+                <p className="text-[10px] text-muted-foreground">Saldo, retiradas e porcionamento</p>
               </CardContent>
             </Card>
           </Link>
@@ -202,26 +176,36 @@ function Dashboard() {
                   <ShoppingCart className="h-4 w-4" />
                 </div>
                 <p className="text-sm font-medium">Compras</p>
-                <p className="text-[10px] text-muted-foreground">
-                  Pedidos, fornecedores e lista
-                </p>
+                <p className="text-[10px] text-muted-foreground">Pedidos, fornecedores e lista</p>
               </CardContent>
             </Card>
           </Link>
-          {[
-            { Icon: ChefHat, label: "Produção" },
-            { Icon: ShieldCheck, label: "Auditoria" },
-          ].map(({ Icon, label }) => (
-            <Card key={label} className="opacity-60">
-              <CardContent className="flex flex-col items-start gap-2 p-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <p className="text-sm font-medium">{label}</p>
-                <p className="text-[10px] text-muted-foreground">Próxima fase</p>
-              </CardContent>
-            </Card>
-          ))}
+          {isStaff && (
+            <>
+              <Link to="/admin/papeis-operacionais" className="block">
+                <Card className="transition active:scale-[0.99]">
+                  <CardContent className="flex flex-col items-start gap-2 p-4">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                      <Users className="h-4 w-4" />
+                    </div>
+                    <p className="text-sm font-medium">Papéis Operacionais</p>
+                    <p className="text-[10px] text-muted-foreground">Funções e responsáveis</p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link to="/admin/auditoria" className="block">
+                <Card className="transition active:scale-[0.99]">
+                  <CardContent className="flex flex-col items-start gap-2 p-4">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                      <ShieldCheck className="h-4 w-4" />
+                    </div>
+                    <p className="text-sm font-medium">Auditoria</p>
+                    <p className="text-[10px] text-muted-foreground">Quem fez, quando e qual papel</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </>
+          )}
         </div>
       </section>
     </div>
