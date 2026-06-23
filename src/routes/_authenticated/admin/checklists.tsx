@@ -2,6 +2,7 @@ import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   CHECKLIST_META,
   TIPOS,
@@ -21,35 +22,13 @@ import {
   groupBySetor,
   qk,
 } from "@/lib/checklists-db";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  ArrowDown,
-  ArrowUp,
-  Copy,
-  CopyPlus,
-  MoveRight,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Camera, Copy, CopyPlus, MoveRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/checklists")({
@@ -58,6 +37,11 @@ export const Route = createFileRoute("/_authenticated/admin/checklists")({
 });
 
 type Aba = "itens" | "setores";
+
+// Papéis operacionais (tabelas novas, fora do types.ts gerado)
+type OpRole = { id: string; nome: string; ativo: boolean };
+const sb = supabase as unknown as { from: (t: string) => any };
+const SEM_PAPEL = "__none__";
 
 function ChecklistsAdminPage() {
   const { user } = useAuth();
@@ -81,38 +65,53 @@ function ChecklistsAdminPage() {
     queryFn: () => fetchItens(tipo),
     enabled: !!user,
   });
+  // Papéis operacionais ativos
   const rolesQuery = useQuery({
     queryKey: ["db", "checklist_roles", "ativos"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
+    queryFn: async (): Promise<OpRole[]> => {
+      const { data, error } = await sb
         .from("checklist_roles")
-        .select("id, nome")
+        .select("id, nome, ativo")
         .eq("ativo", true)
         .order("nome");
       if (error) throw new Error(error.message);
-      return (data ?? []) as { id: string; nome: string }[];
+      return data ?? [];
     },
     enabled: !!user,
   });
-  const setRoleMut = useMutation({
-    mutationFn: async (vars: { id: string; role_id: string | null }) => {
-      const { error } = await (supabase as any)
-        .from("checklist_itens")
-        .update({ role_id: vars.role_id })
-        .eq("id", vars.id);
+  // Mapa item -> papel atribuído (para o tipo atual)
+  const delegQuery = useQuery({
+    queryKey: ["db", "checklist_deleg", tipo],
+    queryFn: async (): Promise<Record<string, string | null>> => {
+      const { data, error } = await sb.from("checklist_itens").select("id, assigned_role_id").eq("tipo", tipo);
       if (error) throw new Error(error.message);
+      const m: Record<string, string | null> = {};
+      (data ?? []).forEach((r: { id: string; assigned_role_id: string | null }) => {
+        m[r.id] = r.assigned_role_id;
+      });
+      return m;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: qk.itensAll });
-      toast.success("Responsável atualizado");
+    enabled: !!user,
+  });
+  // Mapa item -> exige foto (para o tipo atual)
+  const exigeFotoQuery = useQuery({
+    queryKey: ["db", "checklist_exige_foto", tipo],
+    queryFn: async (): Promise<Record<string, boolean>> => {
+      const { data, error } = await sb.from("checklist_itens").select("id, exige_foto").eq("tipo", tipo);
+      if (error) throw new Error(error.message);
+      const m: Record<string, boolean> = {};
+      (data ?? []).forEach((r: { id: string; exige_foto: boolean | null }) => {
+        m[r.id] = !!r.exige_foto;
+      });
+      return m;
     },
-    onError: (e: Error) => toast.error(e.message),
+    enabled: !!user,
   });
 
-  const invalidateItens = () =>
-    queryClient.invalidateQueries({ queryKey: qk.itensAll });
-  const invalidateSetores = () =>
-    queryClient.invalidateQueries({ queryKey: qk.setores });
+  const invalidateItens = () => queryClient.invalidateQueries({ queryKey: qk.itensAll });
+  const invalidateSetores = () => queryClient.invalidateQueries({ queryKey: qk.setores });
+  const invalidateDeleg = () => queryClient.invalidateQueries({ queryKey: ["db", "checklist_deleg", tipo] });
+  const invalidateExigeFoto = () => queryClient.invalidateQueries({ queryKey: ["db", "checklist_exige_foto", tipo] });
 
   const addItemMut = useMutation({
     mutationFn: addItem,
@@ -123,8 +122,7 @@ function ChecklistsAdminPage() {
     onError: (e: Error) => toast.error(e.message),
   });
   const updateItemMut = useMutation({
-    mutationFn: (vars: { id: string; patch: Partial<ChecklistItem> }) =>
-      updateItem(vars.id, vars.patch),
+    mutationFn: (vars: { id: string; patch: Partial<ChecklistItem> }) => updateItem(vars.id, vars.patch),
     onSuccess: invalidateItens,
     onError: (e: Error) => toast.error(e.message),
   });
@@ -145,12 +143,32 @@ function ChecklistsAdminPage() {
     onError: (e: Error) => toast.error(e.message),
   });
   const replicateMut = useMutation({
-    mutationFn: (vars: { item: ChecklistItem; setores: string[] }) =>
-      replicateItemToSetores(vars.item, vars.setores),
+    mutationFn: (vars: { item: ChecklistItem; setores: string[] }) => replicateItemToSetores(vars.item, vars.setores),
     onSuccess: (_, vars) => {
       invalidateItens();
       toast.success(`Replicado em ${vars.setores.length} setor(es)`);
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  // Atribuir/limpar papel responsável do item (tabela nova; update direto)
+  const setPapelMut = useMutation({
+    mutationFn: async (vars: { id: string; roleId: string | null }) => {
+      const { error } = await sb.from("checklist_itens").update({ assigned_role_id: vars.roleId }).eq("id", vars.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      invalidateDeleg();
+      toast.success("Responsável atualizado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  // Liga/desliga foto obrigatória do item
+  const setExigeFotoMut = useMutation({
+    mutationFn: async (vars: { id: string; exige: boolean }) => {
+      const { error } = await sb.from("checklist_itens").update({ exige_foto: vars.exige }).eq("id", vars.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: invalidateExigeFoto,
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -163,8 +181,7 @@ function ChecklistsAdminPage() {
     onError: (e: Error) => toast.error(e.message),
   });
   const renameSetorMut = useMutation({
-    mutationFn: (vars: { id: string; nome: string }) =>
-      renameSetor(vars.id, vars.nome),
+    mutationFn: (vars: { id: string; nome: string }) => renameSetor(vars.id, vars.nome),
     onSuccess: () => {
       invalidateSetores();
       toast.success("Setor renomeado");
@@ -180,8 +197,7 @@ function ChecklistsAdminPage() {
     onError: (e: Error) => toast.error(e.message),
   });
   const moveSetorMut = useMutation({
-    mutationFn: (vars: { id: string; ordem: number }) =>
-      moveSetor(vars.id, vars.ordem),
+    mutationFn: (vars: { id: string; ordem: number }) => moveSetor(vars.id, vars.ordem),
     onSuccess: invalidateSetores,
     onError: (e: Error) => toast.error(e.message),
   });
@@ -193,6 +209,8 @@ function ChecklistsAdminPage() {
   const setorNomes = setores.map((s) => s.nome);
   const itens = itensQuery.data ?? [];
   const roles = rolesQuery.data ?? [];
+  const deleg = delegQuery.data ?? {};
+  const exigeFoto = exigeFotoQuery.data ?? {};
   const groups = useMemo(() => groupBySetor(itens), [itens]);
 
   if (!novoSetor && setorNomes.length > 0) {
@@ -234,8 +252,7 @@ function ChecklistsAdminPage() {
   function handleAddSetor() {
     const nome = novoSetorNome.trim();
     if (!nome) return toast.error("Digite o nome do setor");
-    if (setorNomes.some((s) => s.toLowerCase() === nome.toLowerCase()))
-      return toast.error("Setor já existe");
+    if (setorNomes.some((s) => s.toLowerCase() === nome.toLowerCase())) return toast.error("Setor já existe");
     addSetorMut.mutate(nome);
     setNovoSetorNome("");
   }
@@ -264,9 +281,7 @@ function ChecklistsAdminPage() {
     <div className="space-y-5">
       <div>
         <h1 className="font-display text-2xl font-bold">Gerenciar checklists</h1>
-        <p className="text-xs text-muted-foreground">
-          Controle total: itens, setores, duplicação e mudança de turno.
-        </p>
+        <p className="text-xs text-muted-foreground">Controle total: itens, setores, duplicação e mudança de turno.</p>
       </div>
 
       <div className="flex gap-2 border-b border-border">
@@ -276,9 +291,7 @@ function ChecklistsAdminPage() {
             type="button"
             onClick={() => setAba(a)}
             className={`-mb-px border-b-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
-              aba === a
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground"
+              aba === a ? "border-primary text-primary" : "border-transparent text-muted-foreground"
             }`}
           >
             {a === "itens" ? "Itens" : "Setores"}
@@ -297,9 +310,7 @@ function ChecklistsAdminPage() {
                   type="button"
                   onClick={() => setTipo(t)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    active
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground"
+                    active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
                   }`}
                 >
                   {CHECKLIST_META[t].titulo}
@@ -310,9 +321,7 @@ function ChecklistsAdminPage() {
 
           <Card>
             <CardContent className="space-y-3 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Novo item
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Novo item</p>
               <Input
                 placeholder="Ex.: Conferir gás"
                 value={novoLabel}
@@ -338,14 +347,13 @@ function ChecklistsAdminPage() {
                   <Plus className="mr-1 h-4 w-4" /> Adicionar
                 </Button>
               </div>
+              <p className="text-[10px] text-muted-foreground">O papel responsável é definido em cada item, abaixo.</p>
             </CardContent>
           </Card>
 
           {itensQuery.isLoading && (
             <Card>
-              <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                Carregando…
-              </CardContent>
+              <CardContent className="p-6 text-center text-sm text-muted-foreground">Carregando…</CardContent>
             </Card>
           )}
 
@@ -378,9 +386,7 @@ function ChecklistsAdminPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Select
                           value={it.setor}
-                          onValueChange={(v) =>
-                            updateItemMut.mutate({ id: it.id, patch: { setor: v } })
-                          }
+                          onValueChange={(v) => updateItemMut.mutate({ id: it.id, patch: { setor: v } })}
                         >
                           <SelectTrigger className="h-8 min-w-[8rem] flex-1 text-xs">
                             <SelectValue />
@@ -393,12 +399,7 @@ function ChecklistsAdminPage() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Select
-                          value={tipo}
-                          onValueChange={(v) =>
-                            handleMoveTipo(it, v as ChecklistTipo)
-                          }
-                        >
+                        <Select value={tipo} onValueChange={(v) => handleMoveTipo(it, v as ChecklistTipo)}>
                           <SelectTrigger className="h-8 min-w-[6.5rem] text-xs">
                             <SelectValue />
                           </SelectTrigger>
@@ -406,27 +407,6 @@ function ChecklistsAdminPage() {
                             {TIPOS.map((t) => (
                               <SelectItem key={t} value={t}>
                                 {CHECKLIST_META[t].titulo}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={(it as any).role_id ?? "__none__"}
-                          onValueChange={(v) =>
-                            setRoleMut.mutate({
-                              id: it.id,
-                              role_id: v === "__none__" ? null : v,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="h-8 min-w-[8rem] text-xs">
-                            <SelectValue placeholder="Responsável" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">Sem responsável</SelectItem>
-                            {roles.map((r) => (
-                              <SelectItem key={r.id} value={r.id}>
-                                {r.nome}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -459,6 +439,37 @@ function ChecklistsAdminPage() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
+                      {/* Papel operacional responsável (RF03) */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground shrink-0">
+                          Papel
+                        </span>
+                        <Select
+                          value={deleg[it.id] ?? SEM_PAPEL}
+                          onValueChange={(v) => setPapelMut.mutate({ id: it.id, roleId: v === SEM_PAPEL ? null : v })}
+                        >
+                          <SelectTrigger className="h-8 flex-1 text-xs">
+                            <SelectValue placeholder="Sem papel" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={SEM_PAPEL}>— Sem papel —</SelectItem>
+                            {roles.map((r) => (
+                              <SelectItem key={r.id} value={r.id}>
+                                {r.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Foto obrigatória para concluir (anti-fraude) */}
+                      <label className="flex items-center gap-2 rounded-md border border-dashed border-border p-2">
+                        <Checkbox
+                          checked={!!exigeFoto[it.id]}
+                          onCheckedChange={(v) => setExigeFotoMut.mutate({ id: it.id, exige: v === true })}
+                        />
+                        <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs">Exige foto para concluir</span>
+                      </label>
                     </CardContent>
                   </Card>
                 ))}
@@ -472,9 +483,7 @@ function ChecklistsAdminPage() {
         <>
           <Card>
             <CardContent className="space-y-3 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Novo setor
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Novo setor</p>
               <div className="flex gap-2">
                 <Input
                   placeholder="Ex.: Forno, Pizzaiolo, Eventos VIP"
@@ -550,16 +559,11 @@ function ChecklistsAdminPage() {
             {setorNomes.map((s) => {
               const checked = replicSel.includes(s);
               return (
-                <label
-                  key={s}
-                  className="flex items-center gap-2 rounded-md border border-border p-2"
-                >
+                <label key={s} className="flex items-center gap-2 rounded-md border border-border p-2">
                   <Checkbox
                     checked={checked}
                     onCheckedChange={(v) =>
-                      setReplicSel((sel) =>
-                        v === true ? [...sel, s] : sel.filter((x) => x !== s),
-                      )
+                      setReplicSel((sel) => (v === true ? [...sel, s] : sel.filter((x) => x !== s)))
                     }
                   />
                   <span className="text-sm">{s}</span>
@@ -571,10 +575,7 @@ function ChecklistsAdminPage() {
             <Button variant="outline" onClick={() => setReplicItem(null)}>
               Cancelar
             </Button>
-            <Button
-              onClick={confirmReplicate}
-              disabled={replicSel.length === 0}
-            >
+            <Button onClick={confirmReplicate} disabled={replicSel.length === 0}>
               Replicar
             </Button>
           </DialogFooter>
