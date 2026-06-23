@@ -112,10 +112,19 @@ function PedidoPage() {
     const q = busca.trim().toLowerCase();
     return produtos.filter((p) => {
       if (grupoFiltro && (p.grupo ?? "Outros") !== grupoFiltro) return false;
+      if (papelFiltro) {
+        if (papelFiltro === "__none__") {
+          if (p.role_id) return false;
+        } else if (p.role_id !== papelFiltro) {
+          return false;
+        }
+      }
       if (q && !p.nome.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [produtos, busca, grupoFiltro]);
+  }, [produtos, busca, grupoFiltro, papelFiltro]);
+
+  const temSemPapel = useMemo(() => produtos.some((p) => !p.role_id), [produtos]);
 
   const gruposDisponiveis = useMemo(() => {
     const set = new Set<string>();
