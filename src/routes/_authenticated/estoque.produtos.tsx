@@ -36,6 +36,7 @@ type Draft = {
   estoque_minimo: number;
   valor_unit: number | null;
   ativo: boolean;
+  role_id: string | null;
 };
 
 const NONE = "__none__";
