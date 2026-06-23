@@ -101,7 +101,7 @@ function Dashboard() {
       </section>
 
       {alertas.length > 0 && (
-        <Link to="/estoque" className="block">
+        <Link to="/estoque/estoque-baixo" className="block">
           <Card className="border-destructive/40 bg-destructive/5 transition active:scale-[0.99]">
             <CardContent className="flex items-center gap-3 p-3">
               <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
