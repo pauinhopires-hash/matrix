@@ -27,6 +27,7 @@ function PedidoPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [papeis, setPapeis] = useState<Papel[]>([]);
   const [estoque, setEstoque] = useState<Record<string, number>>({});
   const [carregando, setCarregando] = useState(true);
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
@@ -35,6 +36,7 @@ function PedidoPage() {
   const [salvando, setSalvando] = useState(false);
   const [busca, setBusca] = useState("");
   const [grupoFiltro, setGrupoFiltro] = useState<string>("");
+  const [papelFiltro, setPapelFiltro] = useState<string>("");
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -44,17 +46,24 @@ function PedidoPage() {
     if (!user) return;
     (async () => {
       setCarregando(true);
-      const [{ data: prods, error: e1 }, { data: sal }] = await Promise.all([
-        sb.from("produtos").select("id, nome, unidade, grupo, subgrupo").eq("ativo", true).order("nome"),
-        supabase.from("saldos").select("produto_id, quantidade"),
-      ]);
+      const [{ data: prods, error: e1 }, { data: sal }, { data: roles }, { data: meusPapeis }] =
+        await Promise.all([
+          sb.from("produtos").select("id, nome, unidade, grupo, subgrupo, role_id").eq("ativo", true).order("nome"),
+          supabase.from("saldos").select("produto_id, quantidade"),
+          sb.from("checklist_roles").select("id, nome").eq("ativo", true).order("nome"),
+          sb.from("checklist_role_users").select("role_id").eq("user_id", user.id),
+        ]);
       if (e1) toast.error("Erro ao carregar produtos", { description: e1.message });
       setProdutos((prods ?? []) as Produto[]);
+      setPapeis((roles ?? []) as Papel[]);
       const map: Record<string, number> = {};
       (sal ?? []).forEach((r: { produto_id: string; quantidade: number }) => {
         map[r.produto_id] = (map[r.produto_id] ?? 0) + Number(r.quantidade);
       });
       setEstoque(map);
+      // Auto-seleção: se o usuário tem exatamente 1 papel, já filtra por ele
+      const meus = (meusPapeis ?? []) as { role_id: string }[];
+      if (meus.length === 1) setPapelFiltro(meus[0].role_id);
       setCarregando(false);
     })();
   }, [user]);
