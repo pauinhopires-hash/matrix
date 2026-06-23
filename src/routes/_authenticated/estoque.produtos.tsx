@@ -13,6 +13,7 @@ import {
   qk,
   type Produto,
 } from "@/lib/estoque-db";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ type Draft = {
   estoque_minimo: number;
   valor_unit: number | null;
   ativo: boolean;
+  role_id: string | null;
 };
 
 const NONE = "__none__";
@@ -48,6 +50,18 @@ function ProdutosPage() {
   const { data: cats = [] } = useQuery({ queryKey: qk.categorias, queryFn: fetchCategorias });
   const { data: subs = [] } = useQuery({ queryKey: qk.subcategorias, queryFn: fetchSubcategorias });
   const { data: sublocais = [] } = useQuery({ queryKey: qk.sublocais, queryFn: fetchSublocais });
+  const { data: papeis = [] } = useQuery({
+    queryKey: ["db", "checklist_roles", "ativos"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("checklist_roles")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+  });
 
   const catById = useMemo(() => new Map(cats.map((c) => [c.id, c])), [cats]);
 
@@ -105,6 +119,7 @@ function ProdutosPage() {
       estoque_minimo: 0,
       valor_unit: null,
       ativo: true,
+      role_id: null,
     });
   }
 
@@ -120,6 +135,7 @@ function ProdutosPage() {
       estoque_minimo: Number(editing.estoque_minimo) || 0,
       valor_unit: editing.valor_unit,
       ativo: editing.ativo,
+      role_id: editing.role_id,
     });
   }
   function excluir(p: Produto) {
@@ -136,6 +152,7 @@ function ProdutosPage() {
       estoque_minimo: Number(p.estoque_minimo),
       valor_unit: p.valor_unit,
       ativo: p.ativo,
+      role_id: p.role_id ?? null,
     });
   }
 
@@ -309,6 +326,25 @@ function ProdutosPage() {
                     }
                   />
                 </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Papel responsável (Setor / Perfil)</label>
+                <Select
+                  value={editing.role_id ?? NONE}
+                  onValueChange={(v) => setEditing({ ...editing, role_id: v === NONE ? null : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sem papel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sem papel</SelectItem>
+                    {papeis.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}

@@ -1,63 +1,55 @@
 ## Objetivo
+Em **Fazer pedido** (`/compras/pedido`), adicionar um seletor **SETOR / PERFIL** (igual ao do seu outro app de compras — dropdown com "Todos os setores" como opção padrão) para filtrar os produtos por papel operacional (ex.: Frente de Caixa, Líder Cozinha, Master).
 
-Deixar o app pronto para uso hoje. Nada novo será criado. Apenas: depurar, validar e corrigir o que já existe.
+## Decisões assumidas (você pulou as perguntas)
+- **Vínculo 1:N**: cada produto pode ter um papel responsável → coluna `produtos.role_id` apontando para `checklist_roles` (mesmo padrão já em `checklist_itens.role_id`).
+- **Gestão dos papéis**: reusa a tela já existente `/admin/papeis-operacionais` (sem cadastro novo).
+- **Default do filtro**: "Todos os setores" — não esconde nada por padrão; admin continua vendo tudo.
+- **Auto-seleção opcional**: se o usuário logado pertence a apenas 1 papel (via `checklist_role_users`), o seletor inicia já filtrado nele; senão fica em "Todos".
 
-## Escopo (o que vai ser feito)
+## UI (igual ao print que você mandou)
+Acima dos chips de grupos existentes:
 
-### 1. Saúde do backend
-- Rodar o linter do banco e revisar avisos relevantes (RLS, policies, grants).
-- Conferir as policies das tabelas principais: `profiles`, `user_roles`, `setores`, `produtos`, `categorias`, `subcategorias`, `locais`, `sublocais`, `saldos`, `movimentos`, `requisicoes`, `checklist_itens`, `checklist_registros`, `activity_log`.
-- Verificar se `setores` libera leitura para anônimo (necessário no `/signup`).
-- Conferir grants em todas as tabelas públicas.
-- Confirmar buckets `estoque-fotos` (público, ok) e `checklist-fotos` (privado, policies de upload/leitura).
+```text
+SETOR / PERFIL (<NOME DO USUÁRIO/CARGO>)
+[ Todos os setores ▾ ]
+```
 
-### 2. Fluxos de autenticação
-Teste no preview com os 3 admins já criados:
-- Login → dashboard
-- Logout
-- Esqueci senha → email → reset-password
-- Signup novo usuário → aparece em `/admin/usuarios` como pending → aprovação → login funciona
-- Bloqueio: usuário pending/rejected não consegue logar
+- Label pequeno em verde uppercase (`text-primary`) — mesmo tom do seu print.
+- `<select>` largo, fundo `bg-card`, borda `border`, mesmo styling dos demais selects do app.
+- Opções: `Todos os setores` + cada papel ativo de `checklist_roles` + (se houver produtos sem papel) `Sem papel definido`.
 
-### 3. Fluxos principais do app (smoke test via browser)
-- Dashboard carrega sem erro
-- Checklist: abrir, marcar item, anexar foto, salvar (abertura/meio/fechamento)
-- Estoque: listar produtos, categorias, locais/sublocais
-- Movimentos: entrada, retirada, transferência, porcionamento, ajuste — conferir que `saldos` é atualizado corretamente pelo trigger
-- Requisições: criar, aprovar, atender
-- Importar planilha de estoque
-- Relatório de estoque carrega
-- Admin: aprovar usuário, mudar papel, gerenciar checklists
-- Perfil: editar dados próprios (sem conseguir mudar status/email/id)
-- Activity log: ações são registradas
+## Mudanças
 
-### 4. Erros em runtime
-- Coletar logs do dev-server e do worker publicado.
-- Coletar console e network do preview durante os testes.
-- Para cada erro encontrado: diagnóstico + correção mínima (sem refator, sem feature nova).
+### 1. Migration
+- `alter table public.produtos add column role_id uuid references public.checklist_roles(id) on delete set null;`
+- `create index produtos_role_id_idx on public.produtos(role_id);`
+- RLS atual de `produtos` já cobre a coluna; sem alteração de policies.
 
-### 5. SEO mínimo do app publicado
-- Conferir título, meta description e favicon na rota pública (`/login`).
+### 2. `src/routes/_authenticated/compras.pedido.tsx`
+- Carregar `checklist_roles` ativos junto de produtos/saldos.
+- Carregar `checklist_role_users` do usuário logado para detectar auto-seleção.
+- Estado `papelFiltro: string` (`""` = todos, `"none"` = sem papel, ou `role_id`).
+- `<select>` no topo (acima dos chips de grupo).
+- Combina com `grupoFiltro` e `busca` no `useMemo` de `produtosFiltrados`.
+- Tipo local `Produto` ganha `role_id: string | null`.
+- `select("id, nome, unidade, grupo, subgrupo, role_id")`.
 
-## O que NÃO vai ser feito
+### 3. `src/routes/_authenticated/estoque.produtos.tsx`
+- Adicionar `<Select>` "Papel responsável" no formulário de produto (opções: papéis ativos + "Sem papel"). Salva em `produtos.role_id`.
 
-- Nenhuma tabela, coluna, rota, tela ou componente novo.
-- Nenhuma mudança de design.
-- Nenhuma integração nova (pagamento, email customizado, etc).
-- Refatorações que não sejam necessárias para destravar um bug.
+## Detalhes técnicos
+- Mantém `supabase as any` (padrão atual do arquivo) até types serem regenerados pós-migration.
+- Nenhuma alteração em `compras.lista`, `compras.historico`, `compras.index`, dashboard, navegação, checklists, estoque demais telas, admin/usuarios, login.
+- `types.ts` é regenerado automaticamente após a migration ser aprovada.
 
-## Entregáveis
+## Arquivos
+- `supabase/migrations/<novo>.sql` — coluna `role_id` em `produtos`.
+- `src/routes/_authenticated/compras.pedido.tsx` — seletor SETOR/PERFIL + filtro.
+- `src/routes/_authenticated/estoque.produtos.tsx` — campo de papel no cadastro.
+- `src/integrations/supabase/types.ts` — regenerado.
 
-- Lista do que foi testado e passou.
-- Lista do que estava quebrado, com a correção aplicada.
-- Lista do que continua com limitação conhecida (se houver), para você decidir depois.
-
-## Como vamos testar juntos
-
-Eu rodo a auditoria de backend e os smoke tests via browser automation. Quando precisar de uma ação que envolva dados reais sensíveis (ex: aprovar/recusar um usuário real, apagar movimento), eu paro e te pergunto antes.
-
-## Perguntas antes de começar
-
-1. Posso usar o admin `pauinhopires@gmail.com` para os testes no preview? (uso a sessão dele para clicar pelo app)
-2. Posso criar 1 usuário de teste fake via signup só para validar o fluxo de aprovação, e depois deixá-lo como `rejected` ou apagá-lo?
-3. Posso lançar movimentos de teste em estoque (entrada/retirada de 1 unidade) e depois revertê-los, ou prefere que eu só leia/valide sem escrever em produção?
+## Fora de escopo
+- Não criar nova tabela de papéis (reusa `checklist_roles`).
+- Não tornar papel obrigatório no produto.
+- Não alterar RLS, navegação, dashboard, nem demais telas.
