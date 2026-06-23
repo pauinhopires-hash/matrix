@@ -327,6 +327,25 @@ function ProdutosPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Papel responsável (Setor / Perfil)</label>
+                <Select
+                  value={editing.role_id ?? NONE}
+                  onValueChange={(v) => setEditing({ ...editing, role_id: v === NONE ? null : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sem papel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sem papel</SelectItem>
+                    {papeis.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
           <DialogFooter>
