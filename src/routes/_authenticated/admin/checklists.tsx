@@ -107,11 +107,36 @@ function ChecklistsAdminPage() {
     },
     enabled: !!user,
   });
+  // Pessoas (para responsável individual)
+  const pessoasQuery = useQuery({
+    queryKey: ["db", "profiles_lista"],
+    queryFn: async (): Promise<{ id: string; nome: string }[]> => {
+      const { data, error } = await supabase.from("profiles").select("id, nome").order("nome");
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+    enabled: !!user,
+  });
+  // Mapa item -> pessoa responsável (para o tipo atual)
+  const pessoaQuery = useQuery({
+    queryKey: ["db", "checklist_pessoa", tipo],
+    queryFn: async (): Promise<Record<string, string | null>> => {
+      const { data, error } = await sb.from("checklist_itens").select("id, assigned_user_id").eq("tipo", tipo);
+      if (error) throw new Error(error.message);
+      const m: Record<string, string | null> = {};
+      (data ?? []).forEach((r: { id: string; assigned_user_id: string | null }) => {
+        m[r.id] = r.assigned_user_id;
+      });
+      return m;
+    },
+    enabled: !!user,
+  });
 
   const invalidateItens = () => queryClient.invalidateQueries({ queryKey: qk.itensAll });
   const invalidateSetores = () => queryClient.invalidateQueries({ queryKey: qk.setores });
   const invalidateDeleg = () => queryClient.invalidateQueries({ queryKey: ["db", "checklist_deleg", tipo] });
   const invalidateExigeFoto = () => queryClient.invalidateQueries({ queryKey: ["db", "checklist_exige_foto", tipo] });
+  const invalidatePessoa = () => queryClient.invalidateQueries({ queryKey: ["db", "checklist_pessoa", tipo] });
 
   const addItemMut = useMutation({
     mutationFn: addItem,
@@ -171,6 +196,18 @@ function ChecklistsAdminPage() {
     onSuccess: invalidateExigeFoto,
     onError: (e: Error) => toast.error(e.message),
   });
+  // Atribuir/limpar pessoa responsável do item
+  const setPessoaMut = useMutation({
+    mutationFn: async (vars: { id: string; userId: string | null }) => {
+      const { error } = await sb.from("checklist_itens").update({ assigned_user_id: vars.userId }).eq("id", vars.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      invalidatePessoa();
+      toast.success("Responsável atualizado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const addSetorMut = useMutation({
     mutationFn: (nome: string) => addSetor(nome),
@@ -211,6 +248,8 @@ function ChecklistsAdminPage() {
   const roles = rolesQuery.data ?? [];
   const deleg = delegQuery.data ?? {};
   const exigeFoto = exigeFotoQuery.data ?? {};
+  const pessoas = pessoasQuery.data ?? [];
+  const pessoaDeleg = pessoaQuery.data ?? {};
   const groups = useMemo(() => groupBySetor(itens), [itens]);
 
   if (!novoSetor && setorNomes.length > 0) {
@@ -456,6 +495,28 @@ function ChecklistsAdminPage() {
                             {roles.map((r) => (
                               <SelectItem key={r.id} value={r.id}>
                                 {r.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Responsável individual (pessoa). Tem prioridade sobre o papel. */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground shrink-0">
+                          Pessoa
+                        </span>
+                        <Select
+                          value={pessoaDeleg[it.id] ?? SEM_PAPEL}
+                          onValueChange={(v) => setPessoaMut.mutate({ id: it.id, userId: v === SEM_PAPEL ? null : v })}
+                        >
+                          <SelectTrigger className="h-8 flex-1 text-xs">
+                            <SelectValue placeholder="Sem pessoa" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={SEM_PAPEL}>— Qualquer um do papel —</SelectItem>
+                            {pessoas.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.nome}
                               </SelectItem>
                             ))}
                           </SelectContent>
