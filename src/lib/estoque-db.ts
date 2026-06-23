@@ -13,6 +13,7 @@ export type Produto = Database["public"]["Tables"]["produtos"]["Row"] & {
   subgrupo?: string | null;
   compravel?: boolean | null;
   fornecedor_id?: string | null;
+  role_id?: string | null;
 };
 
 export type Lider = Database["public"]["Enums"]["lider_tipo"];
