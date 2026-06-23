@@ -216,6 +216,28 @@ function PedidoPage() {
         </button>
       </div>
 
+      {papeis.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-widest text-primary">
+            Setor / Perfil{user?.nome ? ` (${user.nome})` : ""}
+          </p>
+          <select
+            value={papelFiltro}
+            onChange={(e) => setPapelFiltro(e.target.value)}
+            className="w-full rounded-md border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary"
+          >
+            <option value="">Todos os setores</option>
+            {papeis.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
+            {temSemPapel && <option value="__none__">Sem papel definido</option>}
+          </select>
+        </div>
+      )}
+
+
       {gruposDisponiveis.length > 1 && (
         <div className="mb-4 flex flex-wrap gap-2">
           <button
