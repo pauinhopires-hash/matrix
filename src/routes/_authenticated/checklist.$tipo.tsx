@@ -90,6 +90,20 @@ function ChecklistPage() {
     },
     enabled: !!user,
   });
+  // Responsável individual (pessoa) por item, para este tipo
+  const assignedUserQuery = useQuery({
+    queryKey: ["db", "checklist_assigned_user", tipo],
+    queryFn: async (): Promise<Record<string, string | null>> => {
+      const { data: d, error } = await sb.from("checklist_itens").select("id, assigned_user_id").eq("tipo", tipo);
+      if (error) throw new Error(error.message);
+      const m: Record<string, string | null> = {};
+      (d ?? []).forEach((r: { id: string; assigned_user_id: string | null }) => {
+        m[r.id] = r.assigned_user_id;
+      });
+      return m;
+    },
+    enabled: !!user,
+  });
   // Nomes (para o relatório: quem fez)
   const profilesQuery = useQuery({
     queryKey: ["db", "profiles_nomes"],
@@ -159,6 +173,7 @@ function ChecklistPage() {
   }, [rolesQuery.data]);
   const myRoleIds = useMemo(() => new Set(myRolesQuery.data ?? []), [myRolesQuery.data]);
   const exigeFotoByItem = useMemo(() => exigeFotoQuery.data ?? {}, [exigeFotoQuery.data]);
+  const assignedUserByItem = useMemo(() => assignedUserQuery.data ?? {}, [assignedUserQuery.data]);
   const nomeById = useMemo(() => {
     const m = new Map<string, string>();
     for (const p of profilesQuery.data ?? []) m.set(p.id, p.nome);
@@ -171,10 +186,13 @@ function ChecklistPage() {
   const visiveis = useMemo(() => {
     if (isStaff) return itens;
     return itens.filter((it) => {
+      // Pessoa definida tem prioridade: a tarefa é só dela.
+      const uid = assignedUserByItem[it.id] ?? null;
+      if (uid) return uid === user.id;
       const rid = (it as { assigned_role_id?: string | null }).assigned_role_id ?? null;
       return rid === null || myRoleIds.has(rid);
     });
-  }, [itens, isStaff, myRoleIds]);
+  }, [itens, isStaff, myRoleIds, assignedUserByItem, user.id]);
 
   const groups = useMemo(() => groupBySetor(visiveis), [visiveis]);
 
@@ -342,11 +360,13 @@ function ChecklistPage() {
           <div className="space-y-2">
             {group.items.map((item) => {
               const rid = (item as { assigned_role_id?: string | null }).assigned_role_id ?? null;
+              const uid = assignedUserByItem[item.id] ?? null;
               return (
                 <ItemCard
                   key={item.id}
                   item={item}
                   papelNome={rid ? (roleById.get(rid) ?? null) : null}
+                  pessoaNome={uid ? (nomeById.get(uid) ?? null) : null}
                   exigeFoto={!!exigeFotoByItem[item.id]}
                   registro={registroMap.get(item.id)}
                   onToggle={(v) => handleToggle(item.id, v, rid)}
@@ -382,6 +402,7 @@ function ChecklistPage() {
 function ItemCard({
   item,
   papelNome,
+  pessoaNome,
   exigeFoto,
   registro,
   onToggle,
@@ -391,6 +412,7 @@ function ItemCard({
 }: {
   item: { id: string; label: string };
   papelNome: string | null;
+  pessoaNome: string | null;
   exigeFoto: boolean;
   registro:
     | {
@@ -430,6 +452,11 @@ function ItemCard({
           <div className="flex-1">
             <p className={`text-sm font-medium ${isDone ? "text-muted-foreground line-through" : ""}`}>{item.label}</p>
             <div className="mt-1 flex flex-wrap items-center gap-1">
+              {pessoaNome && (
+                <span className="inline-block rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
+                  {pessoaNome}
+                </span>
+              )}
               {papelNome && (
                 <span className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                   {papelNome}
