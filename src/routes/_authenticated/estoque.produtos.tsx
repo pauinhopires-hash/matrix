@@ -119,6 +119,7 @@ function ProdutosPage() {
       estoque_minimo: 0,
       valor_unit: null,
       ativo: true,
+      role_id: null,
     });
   }
 
@@ -134,6 +135,7 @@ function ProdutosPage() {
       estoque_minimo: Number(editing.estoque_minimo) || 0,
       valor_unit: editing.valor_unit,
       ativo: editing.ativo,
+      role_id: editing.role_id,
     });
   }
   function excluir(p: Produto) {
@@ -150,6 +152,7 @@ function ProdutosPage() {
       estoque_minimo: Number(p.estoque_minimo),
       valor_unit: p.valor_unit,
       ativo: p.ativo,
+      role_id: p.role_id ?? null,
     });
   }
 
