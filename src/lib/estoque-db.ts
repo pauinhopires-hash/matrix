@@ -168,31 +168,23 @@ export async function upsertProduto(input: {
   estoque_minimo: number;
   valor_unit: number | null;
   ativo: boolean;
+  role_id?: string | null;
 }) {
+  const payload: Record<string, unknown> = {
+    nome: input.nome,
+    unidade: input.unidade,
+    subcategoria_id: input.subcategoria_id,
+    default_sublocal_id: input.default_sublocal_id,
+    estoque_minimo: input.estoque_minimo,
+    valor_unit: input.valor_unit,
+    ativo: input.ativo,
+  };
+  if (input.role_id !== undefined) payload.role_id = input.role_id;
   if (input.id) {
-    const { error } = await supabase
-      .from("produtos")
-      .update({
-        nome: input.nome,
-        unidade: input.unidade,
-        subcategoria_id: input.subcategoria_id,
-        default_sublocal_id: input.default_sublocal_id,
-        estoque_minimo: input.estoque_minimo,
-        valor_unit: input.valor_unit,
-        ativo: input.ativo,
-      })
-      .eq("id", input.id);
+    const { error } = await (supabase as any).from("produtos").update(payload).eq("id", input.id);
     if (error) throw new Error(error.message);
   } else {
-    const { error } = await supabase.from("produtos").insert({
-      nome: input.nome,
-      unidade: input.unidade,
-      subcategoria_id: input.subcategoria_id,
-      default_sublocal_id: input.default_sublocal_id,
-      estoque_minimo: input.estoque_minimo,
-      valor_unit: input.valor_unit,
-      ativo: input.ativo,
-    });
+    const { error } = await (supabase as any).from("produtos").insert(payload);
     if (error) throw new Error(error.message);
   }
 }
