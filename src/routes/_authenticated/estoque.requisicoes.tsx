@@ -17,7 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Camera, X, Plus, Check, XCircle, PackageCheck } from "lucide-react";
+import { ArrowLeft, Camera, X, Plus, Check, XCircle, PackageCheck, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/estoque/requisicoes")({
@@ -111,6 +111,15 @@ function RequisicoesPage() {
   const produto = produtos.find((p) => p.id === produtoId);
   const podeDecidir = user.role === "admin" || user.role === "gerente";
 
+  function enviarWhatsapp() {
+    const linhas: string[] = [`📋 Requisições — ${new Date().toLocaleDateString("pt-BR")}`, ""];
+    for (const r of reqs as Requisicao[]) {
+      const p2 = produtos.find((x) => x.id === r.produto_id);
+      linhas.push(`• ${p2?.nome ?? "(produto)"}: ${Number(r.quantidade)} ${p2?.unidade ?? ""} — ${STATUS_LABEL[r.status]}`);
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(linhas.join("\n"))}`, "_blank");
+  }
+
   function onFile(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -146,6 +155,12 @@ function RequisicoesPage() {
           </Button>
         </div>
       </div>
+
+      {reqs.length > 0 && (
+        <Button variant="outline" size="sm" className="w-full" onClick={enviarWhatsapp}>
+          <Send className="mr-2 h-4 w-4" /> Enviar lista no WhatsApp
+        </Button>
+      )}
 
       {novo && (
         <Card>

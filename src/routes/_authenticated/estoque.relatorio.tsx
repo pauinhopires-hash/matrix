@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, BarChart3, Download, Undo2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Download, Undo2, Send } from "lucide-react";
 import { toast } from "sonner";
 
 const TIPO_MOV: Record<string, string> = {
@@ -142,6 +142,18 @@ function RelatorioPage() {
     URL.revokeObjectURL(url);
   }
 
+  function enviarWhatsapp() {
+    const linhas: string[] = [`📊 Relatório de estoque — últimos ${periodo} dias`, ""];
+    linhas.push("*Mais consumidos:*");
+    if (consumoArr.length === 0) linhas.push("• (sem consumo)");
+    for (const { produto, qtd } of consumoArr.slice(0, 15)) linhas.push(`• ${produto!.nome}: ${fmtQty(qtd, produto!.unidade)}`);
+    linhas.push("");
+    linhas.push("*Desperdício (perdas/quebras):*");
+    if (desperdicioArr.length === 0) linhas.push("• nenhum 🎉");
+    for (const { produto, qtd } of desperdicioArr.slice(0, 15)) linhas.push(`• ${produto!.nome}: ${fmtQty(qtd, produto!.unidade)}`);
+    window.open(`https://wa.me/?text=${encodeURIComponent(linhas.join("\n"))}`, "_blank");
+  }
+
   return (
     <div className="space-y-4">
       <Link to="/estoque" className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -164,6 +176,9 @@ function RelatorioPage() {
         </Select>
         <Button variant="outline" onClick={exportarCsv}>
           <Download className="mr-1 h-4 w-4" /> CSV
+        </Button>
+        <Button variant="outline" onClick={enviarWhatsapp}>
+          <Send className="mr-1 h-4 w-4" /> WhatsApp
         </Button>
       </div>
 

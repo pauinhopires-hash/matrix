@@ -13,7 +13,8 @@ import {
 import { fetchProdutos, qk as estoqueQk } from "@/lib/estoque-db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/compras/lista")({
@@ -82,6 +83,18 @@ function ListaPage() {
 
   const grupos = Array.from(agrupado.entries());
 
+  function enviarWhatsapp() {
+    const linhas: string[] = [`🛒 Lista de compras — ${new Date().toLocaleDateString("pt-BR")}`, ""];
+    for (const [fid, lista] of grupos) {
+      linhas.push(`*${fornecedorNome(fid)}*`);
+      for (const it of lista) {
+        linhas.push(`• ${it.nome_custom ?? produtoNome(it.produto_id)}: ${Number(it.quantidade)} ${it.unidade ?? ""}`.trim());
+      }
+      linhas.push("");
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(linhas.join("\n"))}`, "_blank");
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -93,6 +106,12 @@ function ListaPage() {
           Itens pendentes em pedidos abertos, agrupados por fornecedor.
         </p>
       </div>
+
+      {grupos.length > 0 && (
+        <Button variant="outline" className="w-full" onClick={enviarWhatsapp}>
+          <Send className="mr-2 h-4 w-4" /> Enviar no WhatsApp
+        </Button>
+      )}
 
       {grupos.length === 0 && (
         <Card>

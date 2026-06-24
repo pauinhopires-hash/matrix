@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ArrowLeft, CalendarClock, Plus, Check, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarClock, Plus, Check, Trash2, Send } from "lucide-react";
 import { toast } from "sonner";
 
 const sb = supabase as unknown as { from: (t: string) => any };
@@ -146,6 +146,19 @@ function ValidadesPage() {
     criar.mutate();
   }
 
+  function enviarWhatsapp() {
+    if (ordenados.length === 0) return toast.error("Nada para enviar.");
+    const linhas: string[] = [`📅 Validade — ${new Date().toLocaleDateString("pt-BR")}`, ""];
+    for (const v of ordenados) {
+      const dias = diasAte(v.validade);
+      const [y, m, d] = v.validade.split("-");
+      void y;
+      const tag = dias < 0 ? "VENCIDO" : dias === 0 ? "vence hoje" : `vence em ${dias}d`;
+      linhas.push(`• ${v.descricao} — ${d}/${m} (${tag})`);
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(linhas.join("\n"))}`, "_blank");
+  }
+
   return (
     <div className="space-y-4 pb-6">
       <div>
@@ -162,6 +175,12 @@ function ValidadesPage() {
         </div>
         <p className="text-xs text-muted-foreground">Itens perecíveis e suas datas de vencimento.</p>
       </div>
+
+      {ordenados.length > 0 && (
+        <Button variant="outline" className="w-full" onClick={enviarWhatsapp}>
+          <Send className="mr-2 h-4 w-4" /> Enviar no WhatsApp
+        </Button>
+      )}
 
       {ordenados.length === 0 && (
         <Card>
