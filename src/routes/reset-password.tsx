@@ -53,9 +53,7 @@ function ResetPasswordPage() {
     <div className="flex min-h-screen flex-col px-6 py-10">
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-            <Flame className="h-7 w-7" />
-          </div>
+          <img src="/LOGO.png" alt="Misturaria" className="mb-4 h-20 w-auto object-contain" />
           <h1 className="font-display text-2xl font-bold">Definir nova senha</h1>
         </div>
 

@@ -36,11 +36,8 @@ function LoginPage() {
     <div className="flex min-h-screen flex-col px-6 py-10">
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-            <Flame className="h-7 w-7" />
-          </div>
-          <h1 className="font-display text-2xl font-bold">Misturaria Control</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Operação, checklist e auditoria.</p>
+          <img src="/LOGO.png" alt="Misturaria Fina Mezcla" className="mb-3 h-24 w-auto object-contain" />
+          <p className="text-sm text-muted-foreground">Operação, checklist e auditoria.</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">

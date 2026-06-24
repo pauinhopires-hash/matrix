@@ -77,6 +77,7 @@ function SignupPage() {
   return (
     <div className="min-h-screen px-6 py-10">
       <div className="mx-auto w-full max-w-sm">
+        <img src="/LOGO.png" alt="Misturaria Fina Mezcla" className="mb-4 h-16 w-auto object-contain" />
         <h1 className="font-display text-2xl font-bold">Criar conta</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Após o cadastro, o administrador precisa aprovar seu acesso.
