@@ -52,8 +52,8 @@ function SignupPage() {
       toast.error("Selecione cargo e setor");
       return;
     }
-    if (senha.length < 6) {
-      toast.error("Senha deve ter pelo menos 6 caracteres");
+    if (senha.length < 8) {
+      toast.error("A senha precisa de pelo menos 8 caracteres");
       return;
     }
     setLoading(true);
@@ -161,7 +161,7 @@ function SignupPage() {
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              minLength={6}
+              minLength={8}
               required
             />
           </div>

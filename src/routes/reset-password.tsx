@@ -33,7 +33,7 @@ function ResetPasswordPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (senha.length < 6) return toast.error("Senha deve ter ao menos 6 caracteres");
+    if (senha.length < 8) return toast.error("A senha precisa de pelo menos 8 caracteres");
     if (senha !== confirma) return toast.error("As senhas não conferem");
     setLoading(true);
     try {

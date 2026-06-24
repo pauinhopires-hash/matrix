@@ -1,9 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, type ChangeEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { LogOut, Pencil, Camera } from "lucide-react";
+import { toast } from "sonner";
 import { fetchActivity, qk, type ActivityTipo } from "@/lib/activity-db";
 
 export const Route = createFileRoute("/_authenticated/perfil")({
@@ -12,8 +24,14 @@ export const Route = createFileRoute("/_authenticated/perfil")({
 });
 
 function PerfilPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const navigate = useNavigate();
+
+  const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState("");
+  const [fotoData, setFotoData] = useState<string | undefined>();
+  const [novaSenha, setNovaSenha] = useState("");
+  const [salvando, setSalvando] = useState(false);
 
   const { data: activity = [] } = useQuery({
     queryKey: qk.activity(user?.id),
@@ -22,6 +40,46 @@ function PerfilPage() {
   });
 
   if (!user) return null;
+
+  function abrirEdicao() {
+    setNome(user!.nome);
+    setFotoData(user!.fotoDataUrl);
+    setNovaSenha("");
+    setEditando(true);
+  }
+
+  function onFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setFotoData(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  async function salvar() {
+    if (!nome.trim()) return toast.error("Nome obrigatório");
+    if (novaSenha && novaSenha.length < 8)
+      return toast.error("A nova senha precisa de pelo menos 8 caracteres");
+    setSalvando(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ nome: nome.trim(), foto_url: fotoData ?? null })
+        .eq("id", user!.id);
+      if (error) throw error;
+      if (novaSenha) {
+        const { error: e2 } = await supabase.auth.updateUser({ password: novaSenha });
+        if (e2) throw e2;
+      }
+      await refresh();
+      toast.success("Perfil atualizado");
+      setEditando(false);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSalvando(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -38,13 +96,16 @@ function PerfilPage() {
               {user.nome.slice(0, 1).toUpperCase()}
             </div>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-display text-lg font-semibold">{user.nome}</p>
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             <p className="mt-1 text-[11px] uppercase tracking-wide text-primary">
               {user.cargo} · {user.setor}
             </p>
           </div>
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={abrirEdicao} title="Editar perfil">
+            <Pencil className="h-4 w-4" />
+          </Button>
         </CardContent>
       </Card>
 
@@ -97,6 +158,62 @@ function PerfilPage() {
         <LogOut className="mr-2 h-4 w-4" />
         Sair
       </Button>
+
+      <Dialog open={editando} onOpenChange={(o) => !o && setEditando(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar perfil</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <label
+                htmlFor="foto-perfil"
+                className="flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-border bg-card text-muted-foreground"
+              >
+                {fotoData ? (
+                  <img src={fotoData} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <Camera className="h-5 w-5" />
+                )}
+              </label>
+              <input
+                id="foto-perfil"
+                type="file"
+                accept="image/*"
+                capture="user"
+                onChange={onFile}
+                className="hidden"
+              />
+              <p className="text-xs text-muted-foreground">Toque para trocar a foto (opcional)</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nome-perfil">Nome</Label>
+              <Input id="nome-perfil" value={nome} onChange={(e) => setNome(e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="senha-perfil">Nova senha (deixe em branco para manter)</Label>
+              <Input
+                id="senha-perfil"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Mínimo 8 caracteres"
+                value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditando(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={salvar} disabled={salvando}>
+              {salvando ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
