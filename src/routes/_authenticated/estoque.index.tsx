@@ -10,6 +10,7 @@ import {
   qk as estoqueQk,
 } from "@/lib/estoque-db";
 import { fetchSaldos, qk as movQk, fmtQty } from "@/lib/movimentos-db";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Package,
@@ -24,6 +25,7 @@ import {
   MapPin,
   Tags,
   Upload,
+  CalendarClock,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/estoque/")({
@@ -48,6 +50,21 @@ function EstoquePage() {
   const { data: saldos = [] } = useQuery({
     queryKey: movQk.saldos,
     queryFn: fetchSaldos,
+  });
+  const { data: vencendo = 0 } = useQuery({
+    queryKey: ["db", "validades_vencendo"],
+    queryFn: async () => {
+      const lim = new Date();
+      lim.setDate(lim.getDate() + 3);
+      const limStr = lim.toISOString().slice(0, 10);
+      const { count, error } = await (supabase as unknown as { from: (t: string) => any })
+        .from("validades")
+        .select("id", { count: "exact", head: true })
+        .is("baixado_em", null)
+        .lte("validade", limStr);
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    },
   });
 
   const saldoTotalByProduto = useMemo(() => {
@@ -75,6 +92,7 @@ function EstoquePage() {
     { to: "/estoque/retirada", label: "Retirada", Icon: ArrowUpFromLine, color: "bg-warning/15 text-warning" },
     { to: "/estoque/porcionar", label: "Porcionar", Icon: Scissors, color: "bg-primary/15 text-primary" },
     { to: "/estoque/requisicoes", label: "Requisições", Icon: ClipboardList, color: "bg-accent/40 text-accent-foreground" },
+    { to: "/estoque/validades", label: "Validade", Icon: CalendarClock, color: "bg-amber-500/15 text-amber-600" },
     ...(isStaff
       ? [{ to: "/estoque/contagem", label: "Contagem", Icon: ClipboardCheck, color: "bg-primary/15 text-primary" }]
       : []),
@@ -133,6 +151,19 @@ function EstoquePage() {
             </ul>
           </CardContent>
         </Card>
+      )}
+
+      {vencendo > 0 && (
+        <Link to="/estoque/validades" className="block">
+          <Card className="border-amber-500/40 bg-amber-500/5">
+            <CardContent className="flex items-center gap-3 p-3">
+              <CalendarClock className="h-5 w-5 shrink-0 text-amber-600" />
+              <p className="flex-1 text-sm font-semibold text-amber-700">
+                {vencendo} item(ns) vencendo ou vencidos
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       )}
 
       <div className="grid grid-cols-3 gap-2">
