@@ -17,6 +17,8 @@ export const Route = createFileRoute("/_authenticated/estoque/retirada")({
   component: RetiradaPage,
 });
 
+const MOTIVOS = ["Consumo/produção", "Venda", "Perda", "Quebra", "Evento", "Outro"];
+
 function RetiradaPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -33,6 +35,7 @@ function RetiradaPage() {
   const [foto, setFoto] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | undefined>();
   const [obs, setObs] = useState("");
+  const [motivo, setMotivo] = useState("Consumo/produção");
 
   const produtos = useMemo(() => (produtosQ.data ?? []).filter((p) => p.ativo), [produtosQ.data]);
   const sublocais = sublocaisQ.data ?? [];
@@ -92,6 +95,7 @@ function RetiradaPage() {
         sublocal_origem_id: subLocalId,
         quantidade: Number(quantidade),
         observacao: obs,
+        motivo,
         foto,
         user_id: user.id,
       });
@@ -216,7 +220,28 @@ function RetiradaPage() {
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground">Motivo / observação</label>
+              <label className="text-xs text-muted-foreground">Motivo da saída</label>
+              <Select value={motivo} onValueChange={setMotivo}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MOTIVOS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(motivo === "Perda" || motivo === "Quebra") && (
+                <p className="mt-1 text-[11px] text-destructive">
+                  Será contabilizado no relatório de desperdício.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground">Observação (opcional)</label>
               <Textarea
                 rows={2}
                 value={obs}

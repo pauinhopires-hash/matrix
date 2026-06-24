@@ -80,6 +80,7 @@ export interface RegistrarRetiradaInput {
   sublocal_origem_id: string;
   quantidade: number;
   observacao?: string;
+  motivo?: string;
   foto: File;
   user_id: string;
 }
@@ -91,6 +92,7 @@ export async function registrarRetirada(input: RegistrarRetiradaInput) {
     sublocal_origem_id: input.sublocal_origem_id,
     quantidade: input.quantidade,
     observacao: input.observacao || null,
+    motivo: (input.motivo ?? null) as never,
     foto_url,
     user_id: input.user_id,
   });

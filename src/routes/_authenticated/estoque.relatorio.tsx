@@ -90,6 +90,20 @@ function RelatorioPage() {
       .sort((a, b) => b.qtd - a.qtd);
   }, [movs, produtos]);
 
+  const desperdicioArr = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const mv of movs) {
+      const mm = mv as MovimentoRow & { motivo: string | null };
+      if (mv.tipo === "retirada" && (mm.motivo === "Perda" || mm.motivo === "Quebra")) {
+        m.set(mv.produto_id, (m.get(mv.produto_id) ?? 0) + Number(mv.quantidade));
+      }
+    }
+    return Array.from(m.entries())
+      .map(([id, qtd]) => ({ produto: produtos.find((p) => p.id === id), qtd }))
+      .filter((x) => x.produto)
+      .sort((a, b) => b.qtd - a.qtd);
+  }, [movs, produtos]);
+
   const porUsuarioArr = useMemo(() => {
     const map = new Map<string, number>();
     for (const m of movs) {
@@ -101,7 +115,7 @@ function RelatorioPage() {
 
   function exportarCsv() {
     const linhas = [
-      ["data", "tipo", "produto", "quantidade", "unidade", "user_id", "obs"],
+      ["data", "tipo", "produto", "quantidade", "unidade", "motivo", "user_id", "obs"],
       ...movs.map((m) => {
         const p = produtos.find((x) => x.id === m.produto_id);
         return [
@@ -110,6 +124,7 @@ function RelatorioPage() {
           p?.nome ?? "",
           String(m.quantidade),
           p?.unidade ?? "",
+          ((m as MovimentoRow & { motivo: string | null }).motivo ?? ""),
           m.user_id ?? "",
           (m.observacao ?? "").replace(/[\n;]/g, " "),
         ];
@@ -166,6 +181,24 @@ function RelatorioPage() {
               <span className="font-semibold">{fmtQty(qtd, produto!.unidade)}</span>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className={desperdicioArr.length ? "border-destructive/30" : undefined}>
+        <CardContent className="space-y-2 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Desperdício (perdas e quebras)
+          </p>
+          {desperdicioArr.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sem perdas/quebras no período. 🎉</p>
+          ) : (
+            desperdicioArr.slice(0, 20).map(({ produto, qtd }) => (
+              <div key={produto!.id} className="flex justify-between text-sm">
+                <span className="truncate">{produto!.nome}</span>
+                <span className="font-semibold text-destructive">{fmtQty(qtd, produto!.unidade)}</span>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 
