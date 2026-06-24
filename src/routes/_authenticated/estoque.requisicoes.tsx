@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo, type ChangeEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchProdutos, qk as estoqueQk } from "@/lib/estoque-db";
 import {
   fetchRequisicoes,
@@ -140,13 +141,7 @@ function RequisicoesPage() {
         </Link>
         <div className="mt-2 flex items-center justify-between">
           <h1 className="font-display text-xl font-bold">Requisições</h1>
-          <Button
-            size="sm"
-            onClick={() => {
-              setNovo(!novo);
-              setProdutoId("");
-            }}
-          >
+          <Button size="sm" onClick={() => { setNovo(!novo); setProdutoId(""); }}>
             <Plus className="mr-1 h-4 w-4" /> Nova
           </Button>
         </div>
@@ -165,9 +160,7 @@ function RequisicoesPage() {
                       {subgrupos.map(({ subgrupo, itens }) => (
                         <div key={subgrupo}>
                           {subgrupos.length > 1 || subgrupo !== "—" ? (
-                            <p className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
-                              {subgrupo}
-                            </p>
+                            <p className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">{subgrupo}</p>
                           ) : null}
                           <div className="space-y-1.5">
                             {itens.map((p) => (
@@ -194,9 +187,7 @@ function RequisicoesPage() {
                     <p className="text-xs text-muted-foreground">Produto</p>
                     <p className="text-sm font-semibold truncate">{produto?.nome}</p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => setProdutoId("")}>
-                    Trocar
-                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setProdutoId("")}>Trocar</Button>
                 </div>
                 <Input
                   type="number"
@@ -204,7 +195,12 @@ function RequisicoesPage() {
                   value={quantidade}
                   onChange={(e) => setQuantidade(e.target.value)}
                 />
-                <Textarea rows={2} placeholder="Motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+                <Textarea
+                  rows={2}
+                  placeholder="Motivo"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                />
                 <label
                   htmlFor="freq"
                   className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border text-xs text-muted-foreground"
@@ -225,10 +221,7 @@ function RequisicoesPage() {
                     <Button
                       size="icon"
                       variant="secondary"
-                      onClick={() => {
-                        setFoto(null);
-                        setFotoPreview(undefined);
-                      }}
+                      onClick={() => { setFoto(null); setFotoPreview(undefined); }}
                       className="absolute right-2 top-2 h-7 w-7"
                     >
                       <X className="h-3 w-3" />
@@ -247,7 +240,9 @@ function RequisicoesPage() {
       <div className="space-y-2">
         {reqs.length === 0 && (
           <Card>
-            <CardContent className="p-6 text-center text-sm text-muted-foreground">Nenhuma requisição.</CardContent>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              Nenhuma requisição.
+            </CardContent>
           </Card>
         )}
         {reqs.map((r: Requisicao) => {
@@ -271,8 +266,10 @@ function RequisicoesPage() {
                     {STATUS_LABEL[r.status]}
                   </span>
                 </div>
-                {r.observacao && <p className="text-xs italic text-muted-foreground">{r.observacao}</p>}
-                {r.foto_url && <img src={r.foto_url} alt="" className="max-h-24 rounded object-cover" />}
+                {r.observacao && (
+                  <p className="text-xs italic text-muted-foreground">{r.observacao}</p>
+                )}
+                {r.foto_url && <ReqFoto value={r.foto_url} />}
                 {podeDecidir && r.status === "pendente" && (
                   <div className="flex gap-2">
                     <Button
@@ -291,7 +288,11 @@ function RequisicoesPage() {
                     >
                       <XCircle className="mr-1 h-3 w-3" /> Recusar
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => decidir.mutate({ id: r.id, status: "cancelada" })}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => decidir.mutate({ id: r.id, status: "cancelada" })}
+                    >
                       <Check className="mr-1 h-3 w-3" /> Cancelar
                     </Button>
                   </div>
@@ -303,4 +304,30 @@ function RequisicoesPage() {
       </div>
     </div>
   );
+}
+
+// Extrai o caminho do arquivo a partir de uma URL pública antiga ou de um caminho cru
+function extrairPath(v: string): string {
+  const marker = "/estoque-fotos/";
+  const i = v.indexOf(marker);
+  if (i >= 0) return v.slice(i + marker.length).split("?")[0];
+  return v.replace(/^\/+/, "");
+}
+
+// Exibe a foto da requisição via link assinado (bucket privado)
+function ReqFoto({ value }: { value: string }) {
+  const { data: url } = useQuery({
+    queryKey: ["req-foto", value],
+    queryFn: async () => {
+      const path = extrairPath(value);
+      const { data, error } = await supabase.storage
+        .from("estoque-fotos")
+        .createSignedUrl(path, 60 * 60);
+      if (error) throw new Error(error.message);
+      return data.signedUrl;
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+  if (!url) return null;
+  return <img src={url} alt="" className="max-h-24 rounded object-cover" />;
 }
