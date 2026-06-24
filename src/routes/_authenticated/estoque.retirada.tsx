@@ -38,6 +38,11 @@ function RetiradaPage() {
   const sublocais = sublocaisQ.data ?? [];
   const locais = locaisQ.data ?? [];
   const saldos = saldosQ.data ?? [];
+  const saldoTotalByProduto = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of saldos) m.set(s.produto_id, (m.get(s.produto_id) ?? 0) + Number(s.quantidade));
+    return m;
+  }, [saldos]);
   const produto = produtos.find((p) => p.id === produtoId);
   const saldoSublocal = Number(
     saldos.find((s) => s.produto_id === produtoId && s.sublocal_id === subLocalId)?.quantidade ?? 0,
@@ -106,6 +111,7 @@ function RetiradaPage() {
     const q = Number(quantidade);
     if (!q || q <= 0) return toast.error("Quantidade inválida");
     if (!foto) return toast.error("Foto é obrigatória");
+    if (q > saldoSublocal && !confirm("A quantidade é maior que o saldo deste sub-local — o estoque vai ficar negativo. Confirma?")) return;
     mut.mutate();
   }
 
@@ -140,7 +146,11 @@ function RetiradaPage() {
                           className="flex w-full items-center justify-between rounded-md border bg-card px-3 py-2.5 text-left text-sm hover:border-primary"
                         >
                           <span className="truncate font-medium">{p.nome}</span>
-                          <span className="text-[10px] text-muted-foreground">{p.unidade}</span>
+                          <span
+                            className={`text-[10px] ${(saldoTotalByProduto.get(p.id) ?? 0) <= 0 ? "text-destructive" : "text-muted-foreground"}`}
+                          >
+                            {fmtQty(saldoTotalByProduto.get(p.id) ?? 0, p.unidade)}
+                          </span>
                         </button>
                       ))}
                     </div>

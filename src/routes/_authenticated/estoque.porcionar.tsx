@@ -171,6 +171,7 @@ function PorcionarPage() {
     if (!oQ || oQ <= 0) return toast.error("Quantidade da peça inválida");
     if (!dQ || dQ <= 0) return toast.error("Nº de porções inválido");
     if (!foto) return toast.error("Foto obrigatória");
+    if (oQ > saldoOrigem && !confirm("A quantidade consumida é maior que o saldo da origem — o estoque vai ficar negativo. Confirma?")) return;
     mut.mutate();
   }
 

@@ -34,7 +34,6 @@ function PedidoPage() {
   const [unidadesOverride, setUnidadesOverride] = useState<Record<string, string>>({});
   const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
-  const [busca, setBusca] = useState("");
   const [grupoFiltro, setGrupoFiltro] = useState<string>("");
   const [papelFiltro, setPapelFiltro] = useState<string>("");
 
@@ -108,8 +107,18 @@ function PedidoPage() {
 
   const itensSelecionados = useMemo(() => Object.entries(quantidades).filter(([, v]) => v > 0), [quantidades]);
 
+  useEffect(() => {
+    const sujo = itensSelecionados.length > 0 || observacao.trim().length > 0;
+    if (!sujo) return;
+    const h = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [itensSelecionados, observacao]);
+
   const produtosFiltrados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
     return produtos.filter((p) => {
       if (grupoFiltro && (p.grupo ?? "Outros") !== grupoFiltro) return false;
       if (papelFiltro) {
@@ -119,10 +128,9 @@ function PedidoPage() {
           return false;
         }
       }
-      if (q && !p.nome.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [produtos, busca, grupoFiltro, papelFiltro]);
+  }, [produtos, grupoFiltro, papelFiltro]);
 
   const temSemPapel = useMemo(() => produtos.some((p) => !p.role_id), [produtos]);
 

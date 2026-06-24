@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo, type ChangeEvent } from "react";
+import { useState, useMemo, useEffect, type ChangeEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { fetchProdutos, fetchSublocais, fetchLocais, qk } from "@/lib/estoque-db";
@@ -32,6 +32,17 @@ function EntradaPage() {
   const [foto, setFoto] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | undefined>();
   const [obs, setObs] = useState("");
+
+  useEffect(() => {
+    const sujo = !!(produtoId || quantidade || obs || foto);
+    if (!sujo) return;
+    const h = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [produtoId, quantidade, obs, foto]);
 
   const produtos = useMemo(() => (produtosQ.data ?? []).filter((p) => p.ativo), [produtosQ.data]);
   const sublocais = sublocaisQ.data ?? [];
