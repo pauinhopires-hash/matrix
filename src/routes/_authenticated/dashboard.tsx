@@ -14,6 +14,7 @@ import {
 } from "@/lib/checklists-db";
 import { fetchProdutos, qk as estoqueQk } from "@/lib/estoque-db";
 import { fetchSaldos, qk as movQk, fmtQty } from "@/lib/movimentos-db";
+import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge, type Status } from "@/components/StatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -55,6 +56,18 @@ function Dashboard() {
   const { data: saldos = [] } = useQuery({
     queryKey: movQk.saldos,
     queryFn: fetchSaldos,
+  });
+  const { data: pendentes = 0 } = useQuery({
+    queryKey: ["db", "pendentes_count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    },
+    enabled: !!user && (user.role === "admin" || user.role === "gerente"),
   });
 
   if (!user) return null;
@@ -112,6 +125,25 @@ function Dashboard() {
                     .slice(0, 3)
                     .map((p) => `${p.nome} (${fmtQty(saldoTotalByProduto.get(p.id) ?? 0, p.unidade)})`)
                     .join(" · ")}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
+      {isStaff && pendentes > 0 && (
+        <Link to="/admin/usuarios" className="block">
+          <Card className="border-primary/40 bg-primary/5 transition active:scale-[0.99]">
+            <CardContent className="flex items-center gap-3 p-3">
+              <Users className="h-5 w-5 shrink-0 text-primary" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-primary">
+                  {pendentes} cadastro(s) aguardando aprovação
+                </p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  Toque para revisar e liberar o acesso da equipe
                 </p>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />

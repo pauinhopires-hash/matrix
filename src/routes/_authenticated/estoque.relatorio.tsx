@@ -1,9 +1,9 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { fetchProdutos, qk as estoqueQk } from "@/lib/estoque-db";
-import { fmtQty } from "@/lib/movimentos-db";
+import { fmtQty, estornarMovimento } from "@/lib/movimentos-db";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, BarChart3, Download } from "lucide-react";
+import { ArrowLeft, BarChart3, Download, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+
+const TIPO_MOV: Record<string, string> = {
+  entrada: "Entrada",
+  retirada: "Saída",
+  porcionamento: "Porcionamento",
+  ajuste: "Contagem/ajuste",
+};
 
 type MovimentoRow = Database["public"]["Tables"]["movimentos"]["Row"];
 
@@ -49,6 +57,17 @@ function RelatorioPage() {
   const { data: movs = [] } = useQuery({
     queryKey: ["db", "movimentos", "periodo", periodo] as const,
     queryFn: () => fetchMovimentosPeriodo(Number(periodo)),
+  });
+
+  const qc = useQueryClient();
+  const estorno = useMutation({
+    mutationFn: (m: MovimentoRow) => estornarMovimento(m as never, user!.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["db", "movimentos", "periodo", periodo] });
+      qc.invalidateQueries({ queryKey: ["db", "saldos"] });
+      toast.success("Lançamento estornado");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   if (!user) return null;
@@ -164,6 +183,59 @@ function RelatorioPage() {
               <span className="font-semibold">{n}</span>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-2 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Movimentos recentes
+          </p>
+          {movs.length === 0 && (
+            <p className="text-sm text-muted-foreground">Sem movimentos no período.</p>
+          )}
+          {movs.slice(0, 40).map((m) => {
+            const mm = m as MovimentoRow & { estornado_em: string | null; estorno_de: string | null };
+            const p = produtos.find((x) => x.id === m.produto_id);
+            const estornavel = m.tipo !== "ajuste" && !mm.estornado_em && !mm.estorno_de;
+            return (
+              <div key={m.id} className="flex items-center gap-2 border-b border-border/60 py-1.5 last:border-0">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm">
+                    <span className="font-medium">{TIPO_MOV[m.tipo] ?? m.tipo}</span>
+                    {" · "}
+                    {p?.nome ?? "(produto removido)"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {fmtQty(Number(m.quantidade), p?.unidade ?? "")} ·{" "}
+                    {new Date(m.created_at).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    {mm.estornado_em ? " · estornado" : ""}
+                    {mm.estorno_de ? " · (estorno)" : ""}
+                  </p>
+                </div>
+                {estornavel && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 shrink-0 text-[11px]"
+                    disabled={estorno.isPending}
+                    onClick={() => {
+                      if (confirm(`Estornar este lançamento de ${p?.nome ?? "produto"}? O estoque será corrigido.`)) {
+                        estorno.mutate(m);
+                      }
+                    }}
+                  >
+                    <Undo2 className="mr-1 h-3 w-3" /> Estornar
+                  </Button>
+                )}
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 

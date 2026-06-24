@@ -45,6 +45,7 @@ function ProdutosPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Draft | null>(null);
+  const [busca, setBusca] = useState("");
 
   const { data: produtos = [] } = useQuery({ queryKey: qk.produtos, queryFn: fetchProdutos });
   const { data: cats = [] } = useQuery({ queryKey: qk.categorias, queryFn: fetchCategorias });
@@ -65,9 +66,20 @@ function ProdutosPage() {
 
   const catById = useMemo(() => new Map(cats.map((c) => [c.id, c])), [cats]);
 
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    if (!q) return produtos;
+    return produtos.filter(
+      (p) =>
+        p.nome.toLowerCase().includes(q) ||
+        (p.grupo ?? "").toLowerCase().includes(q) ||
+        (p.subgrupo ?? "").toLowerCase().includes(q),
+    );
+  }, [produtos, busca]);
+
   // lista corrida agrupada por grupo > subgrupo
   const agrupados = useMemo(() => {
-    const arr = [...produtos].sort((a, b) => {
+    const arr = [...filtrados].sort((a, b) => {
       const ga = (a.grupo ?? "Outros").localeCompare(b.grupo ?? "Outros");
       if (ga !== 0) return ga;
       const sa = (a.subgrupo ?? "—").localeCompare(b.subgrupo ?? "—");
@@ -87,7 +99,7 @@ function ProdutosPage() {
       grupo,
       subgrupos: Array.from(subs2.entries()).map(([subgrupo, itens]) => ({ subgrupo, itens })),
     }));
-  }, [produtos]);
+  }, [filtrados]);
 
   const mSave = useMutation({
     mutationFn: upsertProduto,
@@ -174,10 +186,23 @@ function ProdutosPage() {
         </div>
       </div>
 
+      <Input
+        placeholder="Buscar produto, grupo ou subgrupo…"
+        value={busca}
+        onChange={(e) => setBusca(e.target.value)}
+      />
+
       <div className="space-y-5">
         {produtos.length === 0 && (
           <Card>
             <CardContent className="p-6 text-center text-sm text-muted-foreground">Nenhum produto.</CardContent>
+          </Card>
+        )}
+        {produtos.length > 0 && filtrados.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              Nenhum produto encontrado para “{busca}”.
+            </CardContent>
           </Card>
         )}
         {agrupados.map(({ grupo, subgrupos }) => (
