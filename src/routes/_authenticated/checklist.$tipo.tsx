@@ -272,7 +272,7 @@ function ChecklistPage() {
       linhas.push("");
     }
     linhas.push(`${done}/${total} itens concluídos.`);
-    linhas.push(`Gerado por ${user.nome}.`);
+    linhas.push(`Gerado por ${user?.nome ?? "usuário"}.`);
     setRelatorio(linhas.join("\n"));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }

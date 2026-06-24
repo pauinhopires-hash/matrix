@@ -39,6 +39,7 @@ import { Route as AuthenticatedAdminRequisicoesCompraRouteImport } from './route
 import { Route as AuthenticatedAdminPapeisOperacionaisRouteImport } from './routes/_authenticated/admin/papeis-operacionais'
 import { Route as AuthenticatedAdminFornecedoresRouteImport } from './routes/_authenticated/admin/fornecedores'
 import { Route as AuthenticatedAdminChecklistsRouteImport } from './routes/_authenticated/admin/checklists'
+import { Route as AuthenticatedAdminAuditoriaRouteImport } from './routes/_authenticated/admin/auditoria'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -210,6 +211,12 @@ const AuthenticatedAdminChecklistsRoute =
     path: '/admin/checklists',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminAuditoriaRoute =
+  AuthenticatedAdminAuditoriaRouteImport.update({
+    id: '/admin/auditoria',
+    path: '/admin/auditoria',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/estoque': typeof AuthenticatedEstoqueRouteWithChildren
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/auditoria': typeof AuthenticatedAdminAuditoriaRoute
   '/admin/checklists': typeof AuthenticatedAdminChecklistsRoute
   '/admin/fornecedores': typeof AuthenticatedAdminFornecedoresRoute
   '/admin/papeis-operacionais': typeof AuthenticatedAdminPapeisOperacionaisRoute
@@ -250,6 +258,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/auditoria': typeof AuthenticatedAdminAuditoriaRoute
   '/admin/checklists': typeof AuthenticatedAdminChecklistsRoute
   '/admin/fornecedores': typeof AuthenticatedAdminFornecedoresRoute
   '/admin/papeis-operacionais': typeof AuthenticatedAdminPapeisOperacionaisRoute
@@ -283,6 +292,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/estoque': typeof AuthenticatedEstoqueRouteWithChildren
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/_authenticated/admin/auditoria': typeof AuthenticatedAdminAuditoriaRoute
   '/_authenticated/admin/checklists': typeof AuthenticatedAdminChecklistsRoute
   '/_authenticated/admin/fornecedores': typeof AuthenticatedAdminFornecedoresRoute
   '/_authenticated/admin/papeis-operacionais': typeof AuthenticatedAdminPapeisOperacionaisRoute
@@ -316,6 +326,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/estoque'
     | '/perfil'
+    | '/admin/auditoria'
     | '/admin/checklists'
     | '/admin/fornecedores'
     | '/admin/papeis-operacionais'
@@ -346,6 +357,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard'
     | '/perfil'
+    | '/admin/auditoria'
     | '/admin/checklists'
     | '/admin/fornecedores'
     | '/admin/papeis-operacionais'
@@ -378,6 +390,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/estoque'
     | '/_authenticated/perfil'
+    | '/_authenticated/admin/auditoria'
     | '/_authenticated/admin/checklists'
     | '/_authenticated/admin/fornecedores'
     | '/_authenticated/admin/papeis-operacionais'
@@ -622,6 +635,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminChecklistsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/auditoria': {
+      id: '/_authenticated/admin/auditoria'
+      path: '/admin/auditoria'
+      fullPath: '/admin/auditoria'
+      preLoaderRoute: typeof AuthenticatedAdminAuditoriaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -660,6 +680,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEstoqueRoute: typeof AuthenticatedEstoqueRouteWithChildren
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
+  AuthenticatedAdminAuditoriaRoute: typeof AuthenticatedAdminAuditoriaRoute
   AuthenticatedAdminChecklistsRoute: typeof AuthenticatedAdminChecklistsRoute
   AuthenticatedAdminFornecedoresRoute: typeof AuthenticatedAdminFornecedoresRoute
   AuthenticatedAdminPapeisOperacionaisRoute: typeof AuthenticatedAdminPapeisOperacionaisRoute
@@ -676,6 +697,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEstoqueRoute: AuthenticatedEstoqueRouteWithChildren,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
+  AuthenticatedAdminAuditoriaRoute: AuthenticatedAdminAuditoriaRoute,
   AuthenticatedAdminChecklistsRoute: AuthenticatedAdminChecklistsRoute,
   AuthenticatedAdminFornecedoresRoute: AuthenticatedAdminFornecedoresRoute,
   AuthenticatedAdminPapeisOperacionaisRoute:
